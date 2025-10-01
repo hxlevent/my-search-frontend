@@ -150,87 +150,91 @@
     ['uidInput','uidDateFrom','uidDateTo'].forEach(id=>qs(id).addEventListener('keydown',e=>{ if(e.key==='Enter') searchByUID(1); }));
 
     // ★ 요약+상세 2단 테이블 렌더 (요구사항 반영: 25일 1차/생방 분리, 개근 o/x)
-    function renderUIDTable(rows){
-      const wrap = qs('uidResults');
-      if (!rows || rows.length === 0) { wrap.innerHTML = '<p>검색 결과가 없습니다.</p>'; return; }
+   function renderUIDTable(rows){
+  const wrap = qs('uidResults');
+  if (!rows || rows.length === 0) { wrap.innerHTML = '<p>검색 결과가 없습니다.</p>'; return; }
 
-      // 1) 날짜 범위 (없으면 기본 9/19 ~ 9/25)
-      const df = qs('uidDateFrom').value.trim() || '2025.09.19';
-      const dt = qs('uidDateTo').value.trim()   || '2025.09.25';
-      const days = getDateRange(df, dt);
+  // 1) 날짜 범위 (없으면 기본 9/19 ~ 9/25)
+  const df = qs('uidDateFrom').value.trim() || '2025.09.19';
+  const dt = qs('uidDateTo').value.trim()   || '2025.09.25';
+  const days = getDateRange(df, dt);
 
-      // 2) 날짜별 건수 + 9/25 특수 분리
-      const counts = Object.fromEntries(days.map(d => [d, 0]));
-      let count25_first = 0; // 00:00~09:59
-      let countLive     = 0; // 12:00~23:59
-      const day25 = days.find(d => d.endsWith('.09.25')); // 범위에 25일이 포함되면 분리
+  // 2) 날짜별 건수 + 9/25 특수 분리
+  const counts = Object.fromEntries(days.map(d => [d, 0]));
+  let count25_first = 0; // 00:00~09:59
+  let countLive     = 0; // 12:00~23:59
+  const day25 = days.find(d => d.endsWith('.09.25')); // 범위에 25일 포함시 분리
 
-      rows.forEach(r => {
-        const d = r['날짜']; const t = r['시간'];
-        if (!d || !Object.prototype.hasOwnProperty.call(counts, d)) return;
-        if (day25 && d === day25) {
-          const mins = timeToMinutes(t);
-          if (mins !== null) {
-            if (mins <= 9*60 + 59)      count25_first += 1;  // 25일(1차)
-            else if (mins >= 12*60)     countLive += 1;      // 생방
-            // 10:00~11:59는 요약 미반영(상세엔 그대로)
-          }
-        } else {
-          counts[d] += 1; // 일반 날짜 카운트
-        }
-      });
-
-      // 3) 헤더: 9/19~24 + (25(1차), 생방)
-      const headerLabels = [];
-      const headerKeys   = [];
-      days.forEach(d => {
-        if (day25 && d === day25) {
-          headerLabels.push(toMD(d) + '(1차)'); headerKeys.push(d + '_first');
-          headerLabels.push('생방');            headerKeys.push(d + '_live');
-        } else {
-          headerLabels.push(toMD(d));           headerKeys.push(d);
-        }
-      });
-
-      // 4) 셀 값
-      const summaryCells = headerKeys.map(key => {
-        if (key.endsWith('_first')) return count25_first;
-        if (key.endsWith('_live'))  return countLive;
-        return counts[key] ?? 0;
-      });
-
-      // 5) 개근: 19~24 모두 ≥1 && 25(1차) ≥1
-      let perfect = true;
-      const days_19_24 = days.filter(d => !(day25 && d === day25));
-      for (const d of days_19_24) if ((counts[d] || 0) < 1) { perfect = false; break; }
-      if (day25 && count25_first < 1) perfect = false;
-
-      // 6) 요약 표
-      let summary = '<table><thead><tr><th style="min-width:110px">참여 요약</th>';
-      headerLabels.forEach(lbl => { summary += `<th>${lbl}</th>`; });
-      summary += '</tr></thead><tbody>';
-      summary += `<tr><td>건수</td>${summaryCells.map(c => `<td class="center">${c}</td>`).join('')}</tr>`;
-      summary += `<tr><td>개근</td><td colspan="${headerLabels.length}" class="center strong">${perfect ? 'o' : 'x'}</td></tr>`;
-      summary += '</tbody></table>';
-
-      // 7) 상세 표
-      let detail = '<table style="margin-top:12px"><thead><tr>' +
-        '<th>고유번호</th><th>날짜</th><th>시간</th><th>인증샷 시리얼넘버</th>' +
-        '</tr></thead><tbody>';
-      rows.forEach(r => {
-        const serial = r['인증샷 시리얼넘버'] ?? r['인증샷시리얼넘버'] ?? '';
-        detail += `<tr>
-          <td>${escapeHtml(r.unique_id ?? '')}</td>
-          <td>${escapeHtml(r['날짜'] ?? '')}</td>
-          <td>${escapeHtml(r['시간'] ?? '')}</td>
-          <td>${escapeHtml(serial)}</td>
-        </tr>`;
-      });
-      detail += '</tbody></table>';
-
-      // 8) 렌더
-      wrap.innerHTML = summary + detail;
+  rows.forEach(r => {
+    const d = r['날짜']; const t = r['시간'];
+    if (!d || !Object.prototype.hasOwnProperty.call(counts, d)) return;
+    if (day25 && d === day25) {
+      const mins = timeToMinutes(t);
+      if (mins !== null) {
+        if (mins <= 9*60 + 59)      count25_first += 1;  // 25일(1차)
+        else if (mins >= 12*60)     countLive += 1;      // 생방
+        // 10:00~11:59는 요약 미반영(상세엔 그대로)
+      }
+    } else {
+      counts[d] += 1; // 일반 날짜 카운트
     }
+  });
+
+  // 3) 요약 표 (원본 데이터 기준, 읽기전용)
+  const headerLabels = [];
+  const headerKeys   = [];
+  days.forEach(d => {
+    if (day25 && d === day25) {
+      headerLabels.push(toMD(d) + '(1차)'); headerKeys.push(d + '_first');
+      headerLabels.push('생방');            headerKeys.push(d + '_live');
+    } else {
+      headerLabels.push(toMD(d));           headerKeys.push(d);
+    }
+  });
+  const summaryCells = headerKeys.map(key => {
+    if (key.endsWith('_first')) return count25_first;
+    if (key.endsWith('_live'))  return countLive;
+    return counts[key] ?? 0;
+  });
+
+  // 개근(원본 기준) — 참고용
+  let perfectOriginal = true;
+  const days_19_24 = days.filter(d => !(day25 && d === day25));
+  for (const d of days_19_24) if ((counts[d] || 0) < 1) { perfectOriginal = false; break; }
+  if (day25 && count25_first < 1) perfectOriginal = false;
+
+  let summary = '<table><thead><tr><th style="min-width:110px">참여 요약(원본)</th>';
+  headerLabels.forEach(lbl => { summary += `<th>${lbl}</th>`; });
+  summary += '</tr></thead><tbody>';
+  summary += `<tr><td>건수</td>${summaryCells.map(c => `<td class="center">${c}</td>`).join('')}</tr>`;
+  summary += `<tr><td>개근(원본)</td><td colspan="${headerLabels.length}" class="center strong">${perfectOriginal ? 'o' : 'x'}</td></tr>`;
+  summary += '</tbody></table>';
+
+  // 4) 수정 가능 패널 (이 부분이 새로 추가되는 핵심)
+  const editableHTML = renderEditPanel({
+    days, day25,
+    baseCounts: counts,
+    base25First: count25_first,
+    baseLive: countLive
+  });
+
+  // 5) 상세 표 (기존)
+  let detail = '<table style="margin-top:12px"><thead><tr>' +
+    '<th>고유번호</th><th>날짜</th><th>시간</th><th>인증샷 시리얼넘버</th>' +
+    '</tr></thead><tbody>';
+  rows.forEach(r => {
+    const serial = r['인증샷 시리얼넘버'] ?? r['인증샷시리얼넘버'] ?? '';
+    detail += `<tr>
+      <td>${escapeHtml(r.unique_id ?? '')}</td>
+      <td>${escapeHtml(r['날짜'] ?? '')}</td>
+      <td>${escapeHtml(r['시간'] ?? '')}</td>
+      <td>${escapeHtml(serial)}</td>
+    </tr>`;
+  });
+  detail += '</tbody></table>';
+
+  wrap.innerHTML = summary + editableHTML + detail;
+}
 
     /* ===== 시리얼 검색 (그대로) ===== */
     async function searchBySerial(){
@@ -269,6 +273,128 @@
       html += '</tbody></table>';
       div.innerHTML = html;
     }
+    // 수정 가능한 집계 테이블 + 메시지 영역 렌더
+function renderEditPanel({ days, day25, baseCounts, base25First, baseLive }) {
+  // 9/19~24 고정 라벨 만들기 (요구 템플릿이 이 구간 기준이기 때문)
+  const targetDays = ['2025.09.19','2025.09.20','2025.09.21','2025.09.22','2025.09.23','2025.09.24'];
+  const values = {};
+  targetDays.forEach(d => { values[d] = (d in baseCounts) ? baseCounts[d] : 0; });
+  const v25 = base25First || 0;
+  const vLive = baseLive || 0;
+
+  // 입력 테이블
+  let html = `
+  <div style="margin-top:16px">
+    <h3 style="margin:6px 0 4px; color:#2c3e50;">값 수정 & 메시지 생성</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>9/19</th><th>9/20</th><th>9/21</th><th>9/22</th><th>9/23</th><th>9/24</th>
+          <th>9/25(1차)</th><th>생방</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          ${targetDays.map(d => `<td class="center"><input type="number" min="0" id="edit_${d}" value="${values[d]}" style="width:70px;text-align:center;"></td>`).join('')}
+          <td class="center"><input type="number" min="0" id="edit_25_first" value="${v25}" style="width:90px;text-align:center;"></td>
+          <td class="center"><input type="number" min="0" id="edit_live" value="${vLive}" style="width:90px;text-align:center;"></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="meta" style="margin-top:8px">
+      <div id="editedInfo" class="tag">합계/개근 계산 중…</div>
+      <div>
+        <button class="btn" onclick="generateMessage()">메시지 생성</button>
+        <button class="btn" onclick="copyMessage()">복사</button>
+      </div>
+    </div>
+
+    <textarea id="messageBox" rows="10" style="width:100%; margin-top:8px; font-family:inherit;"></textarea>
+  </div>`;
+
+  // 렌더 후 합계 갱신 이벤트 연결
+  setTimeout(() => {
+    [...targetDays.map(d=>`edit_${d}`), 'edit_25_first','edit_live'].forEach(id=>{
+      const el = qs(id); if (el) el.addEventListener('input', updateEditedSummary);
+    });
+    updateEditedSummary(); // 최초 1회 계산
+  });
+
+  return html;
+}
+
+// 입력값 읽기
+function getEditedCounts() {
+  const d = k => Math.max(0, Number(qs(k)?.value || 0) | 0);
+  const val = {
+    '2025.09.19': d('edit_2025.09.19'),
+    '2025.09.20': d('edit_2025.09.20'),
+    '2025.09.21': d('edit_2025.09.21'),
+    '2025.09.22': d('edit_2025.09.22'),
+    '2025.09.23': d('edit_2025.09.23'),
+    '2025.09.24': d('edit_2025.09.24'),
+    '25_first':   d('edit_25_first'),
+    'live':       d('edit_live'),
+  };
+  return val;
+}
+
+// 합계/개근 표시 갱신 (수정값 기준)
+function updateEditedSummary() {
+  const v = getEditedCounts();
+  const k = v['2025.09.19'] + v['2025.09.20'] + v['2025.09.21'] +
+            v['2025.09.22'] + v['2025.09.23'] + v['2025.09.24'] +
+            v['25_first']; // 사전 누적
+  const n = v['live'];     // 생방
+  const perfect = [v['2025.09.19'],v['2025.09.20'],v['2025.09.21'],v['2025.09.22'],v['2025.09.23'],v['2025.09.24']].every(x=>x>=1) && v['25_first']>=1;
+  const weight = perfect ? (n*8) : n;
+
+  const txt = `사전 합계: ${k}건 · 생방: ${n}건 · 개근: ${perfect ? 'o' : 'x'} · 가중치: ${weight}`;
+  qs('editedInfo').textContent = txt;
+}
+
+// 메시지 생성 (수정값 기준으로 문자열 만들기)
+function generateMessage() {
+  const uid = (qs('uidInput').value || '').trim().toUpperCase();
+  const v = getEditedCounts();
+  const a=v['2025.09.19'], b=v['2025.09.20'], c=v['2025.09.21'],
+        d=v['2025.09.22'], e=v['2025.09.23'], f=v['2025.09.24'],
+        g=v['25_first'],   n=v['live'];
+  const k = a+b+c+d+e+f+g;
+  const perfect = [a,b,c,d,e,f].every(x=>x>=1) && g>=1;
+  const weight = perfect ? (n*8) : n;
+
+  const msg =
+`고유번호 님, 최종 집계 안내 메시지입니다.
+
+사전 투표 참여내역(09.19 - 09.25 오전)
+19일 - ${a}건 
+20일 - ${b}건 
+21일 - ${c}건 
+22일 - ${d}건 
+23일 - ${e}건 
+24일 - ${f}건 
+25일 - ${g}건 
+사전 투표기간 총 누적투표수 : ${k}건 
+고유번호 님은 ${perfect ? '개근에 해당됩니다.' : '개근에 해당되지 않습니다.'}
+
+생방 투표 참여내역은 ${n}건입니다.
+개근 여부에 따른 생방 이벤트 총 가중치는 ${perfect ? `${n}→ 8×${n} = ${weight}` : `${weight}`} 입니다.`;
+
+  qs('messageBox').value = msg.replaceAll('고유번호', uid || '고유번호');
+}
+
+// 복사
+function copyMessage(){
+  const ta = qs('messageBox');
+  ta.select(); ta.setSelectionRange(0, 99999);
+  document.execCommand('copy');
+  // UX 알림 (간단)
+  const prev = qs('editedInfo').textContent;
+  qs('editedInfo').textContent = '메시지를 클립보드에 복사했습니다.';
+  setTimeout(()=> qs('editedInfo').textContent = prev, 1500);
+}
   </script>
 </body>
 </html>
