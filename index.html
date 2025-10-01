@@ -143,14 +143,10 @@ tr:nth-child(even){background:#fafafa}
   }
 
   const id = idRaw.toUpperCase();   // 🔑 여기서 대문자로 변환
-  const df = qs('uidDateFrom').value.trim();
-  const dt = qs('uidDateTo').value.trim();
-
+ 
   u.searchParams.set('unique_id', id);
   u.searchParams.set('page', page ?? state.page);
   u.searchParams.set('limit', state.limit);
-  if(df) u.searchParams.set('date_from', df);
-  if(dt) u.searchParams.set('date_to', dt);
   return u;
 }
 
@@ -176,7 +172,7 @@ tr:nth-child(even){background:#fafafa}
     function prevPage(){ if(state.page>1) searchByUID(state.page-1); }
     function nextPage(){ searchByUID(state.page+1); }
     function changeLimit(){ state.limit = Number(qs('limitSel').value || 200); state.page=1; searchByUID(1); }
-    ['uidInput','uidDateFrom','uidDateTo'].forEach(id=>qs(id).addEventListener('keydown',e=>{ if(e.key==='Enter') searchByUID(1); }));
+    ['uidInput'].forEach(id=>qs(id).addEventListener('keydown',e=>{ if(e.key==='Enter') searchByUID(1); }));
 
     // ★ 요약+상세 2단 테이블 렌더 (요구사항 반영: 25일 1차/생방 분리, 개근 o/x)
    function renderUIDTable(rows){
@@ -184,8 +180,8 @@ tr:nth-child(even){background:#fafafa}
   if (!rows || rows.length === 0) { wrap.innerHTML = '<p>검색 결과가 없습니다.</p>'; return; }
 
   // 1) 날짜 범위 (없으면 기본 9/19 ~ 9/25)
-  const df = qs('uidDateFrom').value.trim() || '2025.09.19';
-  const dt = qs('uidDateTo').value.trim()   || '2025.09.25';
+  const df = '2025.09.19';
+  const dt = '2025.09.25';
   const days = getDateRange(df, dt);
 
   // 2) 날짜별 건수 + 9/25 특수 분리
