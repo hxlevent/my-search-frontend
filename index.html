@@ -1,189 +1,136 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>이벤트 데이터 조회</title>
-  <style>
-    body { font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,'Open Sans','Helvetica Neue',sans-serif; margin:0; padding:20px; background:#f4f7f9; color:#333; }
-    .container { max-width: 1000px; margin: 40px auto; background:#fff; padding: 24px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
-    h1 { margin: 0 0 12px; color:#2c3e50; }
-    .tabs { display:flex; border-bottom:1px solid #e5e7eb; margin-bottom:16px; gap:4px; }
-    .tab { padding:10px 14px; cursor:pointer; border-radius:6px 6px 0 0; }
-    .tab.active { background:#eaf3ff; color:#1f6feb; border:1px solid #cfe3ff; border-bottom-color:#eaf3ff; }
-    .tabpanel { display:none; }
-    .tabpanel.active { display:block; }
-    .row { display:grid; grid-template-columns: 1fr 1fr auto; gap:10px; margin-bottom:12px; }
-    input, select { padding:10px; font-size:14px; border:1px solid #d1d5db; border-radius:6px; }
-    .btn { padding:10px 14px; background:#3498db; color:#fff; border:0; border-radius:6px; cursor:pointer; }
-    .btn:hover { background:#2980b9; }
-    #loader { font-size:13px; color:#555; display:none; }
-    table { width:100%; border-collapse:collapse; margin-top:12px; font-size:14px; }
-    th, td { border:1px solid #eee; padding:10px; text-align:left; }
-    th { background:#f6f8fa; }
-    tr:nth-child(even){ background:#fafafa; }
-    .meta { display:flex; justify-content:space-between; align-items:center; margin-top:8px; color:#666; font-size:13px; }
-    .tag { background:#eef6ff; color:#1f6feb; border:1px solid #d0e7ff; border-radius:999px; padding:4px 10px; font-size:12px; }
-    .error { color:#d91e18; }
-    details summary { cursor:pointer; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>이벤트 데이터 조회</h1>
-    <div class="tabs">
-      <div class="tab active" data-tab="uid">고유번호 검색</div>
-      <div class="tab" data-tab="serial">시리얼 검색</div>
-    </div>
+// 날짜 범위를 "YYYY.MM.DD" 문자열 배열로 생성
+function getDateRange(startStr, endStr) {
+  const toDate = (s) => {
+    const [Y, M, D] = s.split('.').map(Number);
+    return new Date(Y, M - 1, D);
+  };
+  const fmt = (d) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}.${m}.${day}`;
+  };
+  const res = [];
+  let cur = toDate(startStr);
+  const end = toDate(endStr);
+  while (cur <= end) {
+    res.push(fmt(cur));
+    cur.setDate(cur.getDate() + 1);
+  }
+  return res;
+}
 
-    <!-- 고유번호 검색 탭 -->
-    <div id="panel-uid" class="tabpanel active">
-      <div class="row" style="grid-template-columns: 1fr 1fr 1fr auto;">
-        <input id="uidInput" placeholder="고유번호(unique_id)" />
-        <input id="uidDateFrom" placeholder="시작일자 YYYY.MM.DD (선택)" />
-        <input id="uidDateTo" placeholder="종료일자 YYYY.MM.DD (선택)" />
-        <button class="btn" onclick="searchByUID()">검색</button>
-      </div>
-      <div class="meta">
-        <div id="loader">검색 중… <span id="timer">0.0</span>초</div>
-        <div>
-          <span class="tag" id="pageInfo">page 1</span>
-          <button class="btn" onclick="prevPage()">◀</button>
-          <button class="btn" onclick="nextPage()">▶</button>
-          <select id="limitSel" onchange="changeLimit()">
-            <option>50</option><option>100</option><option>200</option>
-          </select>
-        </div>
-      </div>
-      <div id="uidResults"></div>
-    </div>
+// 날짜 문자열 "YYYY.MM.DD" → "M/D" 표기
+function toMD(dateStr) {
+  const parts = dateStr.split('.').map(Number);
+  return `${parts[1]}/${parts[2]}`;
+}
 
-    <!-- 시리얼 검색 탭 -->
-    <div id="panel-serial" class="tabpanel">
-      <div class="row">
-        <input id="serialInput" placeholder="시리얼번호 정확히 입력" />
-        <input id="serialDateFrom" placeholder="시작일자 YYYY.MM.DD (선택)" />
-        <input id="serialDateTo" placeholder="종료일자 YYYY.MM.DD (선택)" />
-        <button class="btn" onclick="searchBySerial()">검색</button>
-      </div>
-      <div id="serialInfo" class="tag" style="display:none;"></div>
-      <div id="serialResults"></div>
-    </div>
-  </div>
+// "H:MM" 또는 "HH:MM" → 분(min)으로 변환 (예: "0:39" → 39)
+function timeToMinutes(t) {
+  if (!t) return null;
+  const [h, m] = t.split(':').map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return null;
+  return h * 60 + m;
+}
 
-<script>
-/* ===== 환경설정 ===== */
-const baseUrl   = 'https://my-search-backend.onrender.com';
-const apiSearch = `${baseUrl}/search`;           // unique_id용 (배열 반환)
-const apiSerial = `${baseUrl}/search-serial`;    // 시리얼 검색 엔드포인트 (백엔드에 추가 필요)
+// ★ 기존 함수를 이 버전으로 교체
+function renderUIDTable(rows){
+  const wrap = qs('uidResults');
+  if (!rows || rows.length === 0) {
+    wrap.innerHTML = '<p>검색 결과가 없습니다.</p>';
+    return;
+  }
 
-/* ===== 공통 유틸 ===== */
-let timerInterval; let state = { page:1, limit:50, lastData:null };
-function qs(id){ return document.getElementById(id); }
-function escapeHtml(x){ return String(x).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;'); }
-function startTimer(){ let s=Date.now(); qs('timer').textContent='0.0'; qs('loader').style.display='block'; timerInterval=setInterval(()=>{ qs('timer').textContent=((Date.now()-s)/1000).toFixed(1); },100);} 
-function stopTimer(){ clearInterval(timerInterval); qs('loader').style.display='none'; }
-
-/* ===== 탭 전환 ===== */
-document.querySelectorAll('.tab').forEach(t=>{
-  t.addEventListener('click',()=>{
-    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
-    document.querySelectorAll('.tabpanel').forEach(x=>x.classList.remove('active'));
-    t.classList.add('active');
-    qs('panel-'+t.dataset.tab).classList.add('active');
-  });
-});
-
-/* ===== 고유번호 검색 ===== */
-function buildUIDUrl(page=null){
-  const u = new URL(apiSearch);
-  const id = qs('uidInput').value.trim();
+  // 1) 날짜 범위: 입력 없으면 이벤트 기본범위 사용
   const df = qs('uidDateFrom').value.trim();
   const dt = qs('uidDateTo').value.trim();
-  if(!id){ alert('고유번호를 입력하세요.'); return null; }
-  u.searchParams.set('unique_id', id); // 백엔드가 id/unique_id 둘 다 허용
-  if(df) u.searchParams.set('date_from', df);
-  if(dt) u.searchParams.set('date_to', dt);
-  u.searchParams.set('page', page ?? state.page);
-  u.searchParams.set('limit', state.limit);
-  return u;
-}
+  const startStr = df || '2025.09.19';
+  const endStr   = dt || '2025.09.25';
+  const days = getDateRange(startStr, endStr); // ["2025.09.19", ..., "2025.09.25"]
 
-async function searchByUID(page=null){
-  const url = buildUIDUrl(page); if(!url) return;
-  state.page = Number(url.searchParams.get('page'));
-  state.limit= Number(url.searchParams.get('limit'));
-  qs('limitSel').value = String(state.limit);
-  qs('pageInfo').textContent = `page ${state.page}`;
-  try{
-    startTimer();
-    const res = await fetch(url, {mode:'cors'});
-    if(!res.ok) throw new Error('서버 오류');
-    const data = await res.json(); // 배열
-    stopTimer(); state.lastData = data; renderUIDTable(data);
-  }catch(e){ stopTimer(); qs('uidResults').innerHTML = `<p class="error">오류: ${escapeHtml(e.message)}</p>`; }
-}
+  // 2) 날짜별 건수 집계 + 9/25 특수 분리
+  const counts = Object.fromEntries(days.map(d => [d, 0]));
+  let count25_first = 0; // 00:00~09:59
+  let countLive     = 0; // 12:00~23:59
+  // 25일 문자열 찾기 (범위에 25일이 포함된 경우)
+  const day25 = days.find(d => d.endsWith('.09.25') || d.endsWith('.9.25') || d.endsWith('.25'));
 
-function renderUIDTable(rows){
-  const div = qs('uidResults');
-  if(!rows || rows.length===0){ div.innerHTML='<p>검색 결과가 없습니다.</p>'; return; }
-  let html = '<table><thead><tr><th>고유번호</th><th>날짜</th><th>시간</th><th>인증샷 시리얼넘버</th></tr></thead><tbody>';
-  rows.forEach(r=>{
+  rows.forEach(r => {
+    const d = r['날짜'];
+    const t = r['시간'];
+    if (!d) return;
+
+    // 범위 밖이면 스킵
+    if (!counts.hasOwnProperty(d)) return;
+
+    if (day25 && d === day25) {
+      const mins = timeToMinutes(t);
+      if (mins !== null) {
+        if (mins <= 9*60 + 59) {
+          count25_first += 1;      // 9/25(1차)
+        } else if (mins >= 12*60) {
+          countLive += 1;          // 생방
+        } else {
+          // 10:00 ~ 11:59 사이 → 요약표에는 미반영 (상세표에는 그대로 표시)
+        }
+      }
+    } else {
+      counts[d] += 1; // 일반 날짜는 전부 카운트
+    }
+  });
+
+  // 3) 요약 표 헤더 구성: 9/19~24 + (9/25(1차), 생방)
+  const headerDates = [];
+  const headerLabels = [];
+  days.forEach(d => {
+    if (day25 && d === day25) {
+      headerDates.push(d + '_first'); headerLabels.push(toMD(d) + '(1차)');
+      headerDates.push(d + '_live');  headerLabels.push('생방');
+    } else {
+      headerDates.push(d);            headerLabels.push(toMD(d));
+    }
+  });
+
+  // 4) 요약 표 바디(숫자 표기)
+  const summaryCells = headerDates.map(key => {
+    if (key.endsWith('_first')) return count25_first;
+    if (key.endsWith('_live'))  return countLive;
+    const orig = key; // 일반 날짜 키
+    return counts[orig] ?? 0;
+  });
+
+  // 5) 개근 판정: 19~24일 모두 1건 이상 && 25(1차) 1건 이상
+  let perfect = true;
+  const needDates = days.filter(d => !day25 || d !== day25); // 19~24일
+  for (const d of needDates) {
+    if ((counts[d] || 0) < 1) { perfect = false; break; }
+  }
+  if (day25 && count25_first < 1) perfect = false;
+
+  // 6) 요약 표 HTML
+  let summary = '<table><thead><tr><th style="min-width:110px">참여 요약</th>';
+  headerLabels.forEach(lbl => summary += `<th>${lbl}</th>`);
+  summary += '</tr></thead><tbody>';
+  summary += `<tr><td>건수</td>${summaryCells.map(c => `<td style="text-align:center">${c}</td>`).join('')}</tr>`;
+  summary += `<tr><td>개근</td><td colspan="${headerLabels.length}" style="text-align:center;font-weight:600">${perfect ? 'o' : 'x'}</td></tr>`;
+  summary += '</tbody></table>';
+
+  // 7) 상세 표 (원래대로)
+  let detail = '<table style="margin-top:12px"><thead><tr>' +
+    '<th>고유번호</th><th>날짜</th><th>시간</th><th>인증샷 시리얼넘버</th>' +
+    '</tr></thead><tbody>';
+  rows.forEach(r => {
     const serial = r['인증샷 시리얼넘버'] ?? r['인증샷시리얼넘버'] ?? '';
-    html += `<tr>
+    detail += `<tr>
       <td>${escapeHtml(r.unique_id ?? '')}</td>
       <td>${escapeHtml(r['날짜'] ?? '')}</td>
       <td>${escapeHtml(r['시간'] ?? '')}</td>
       <td>${escapeHtml(serial)}</td>
     </tr>`;
   });
-  html += '</tbody></table>';
-  div.innerHTML = html;
-}
+  detail += '</tbody></table>';
 
-function prevPage(){ if(state.page>1) searchByUID(state.page-1); }
-function nextPage(){ searchByUID(state.page+1); }
-function changeLimit(){ state.limit = Number(qs('limitSel').value || 50); state.page=1; searchByUID(1); }
-['uidInput','uidDateFrom','uidDateTo'].forEach(id=>qs(id).addEventListener('keydown',e=>{ if(e.key==='Enter') searchByUID(1); }));
-
-/* ===== 시리얼 검색 ===== */
-async function searchBySerial(){
-  const serial = qs('serialInput').value.trim();
-  const df = qs('serialDateFrom').value.trim();
-  const dt = qs('serialDateTo').value.trim();
-  if(!serial){ alert('시리얼번호를 입력하세요.'); return; }
-  const u = new URL(apiSerial);
-  u.searchParams.set('serial', serial);
-  if(df) u.searchParams.set('date_from', df);
-  if(dt) u.searchParams.set('date_to', dt);
-  qs('serialInfo').style.display='none';
-  qs('serialResults').innerHTML = '조회 중…';
-  try{
-    const res = await fetch(u, {mode:'cors'});
-    if(!res.ok) throw new Error('서버 오류');
-    const arr = await res.json(); // [{unique_id, 날짜, 시간, 인증샷시리얼넘버}]
-    renderSerial(arr);
-    qs('serialInfo').textContent = `${serial} · ${arr.length}건`;
-    qs('serialInfo').style.display='inline-block';
-  }catch(e){
-    qs('serialResults').innerHTML = `<p class="error">오류: ${escapeHtml(e.message)}</p>`;
-  }
+  // 8) 렌더
+  wrap.innerHTML = summary + detail;
 }
-
-function renderSerial(rows){
-  const div = qs('serialResults');
-  if(!rows || rows.length===0){ div.innerHTML='<p>해당 시리얼번호로 조회된 결과가 없습니다.</p>'; return; }
-  // unique_id별로 묶어서 보여주기
-  const byUID = {};
-  rows.forEach(r=>{ const k = r.unique_id || '(unknown)'; (byUID[k] ||= []).push(r); });
-  let html = '<table><thead><tr><th>고유번호</th><th>날짜·시간 목록</th></tr></thead><tbody>';
-  Object.keys(byUID).sort().forEach(uid=>{
-    const lines = byUID[uid].map(r=> `${escapeHtml(r['날짜']||'')} ${escapeHtml(r['시간']||'')}`).join('<br/>');
-    html += `<tr><td>${escapeHtml(uid)}</td><td>${lines}</td></tr>`;
-  });
-  html += '</tbody></table>';
-  div.innerHTML = html;
-}
-</script>
-</body>
-</html>
