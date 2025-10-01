@@ -94,15 +94,18 @@
             }
 
             let table = '<table id="resultsTable">';
-            table += '<thead><tr><th>고유번호</th><th>날짜</th><th>시간</th><th>인증 시리얼넘버</th></tr></thead>';
+            // 데이터베이스의 실제 필드 이름과 일치하도록 헤더 수정
+            table += '<thead><tr><th>고유번호</th><th>날 짜</th><th>시 간</th><th>인증서 시리얼넘버</th></tr></thead>';
             table += '<tbody>';
 
             data.forEach(row => {
                 table += '<tr>';
+                // 데이터베이스의 실제 필드 이름과 일치하도록 데이터 접근 방식 수정
+                // 필드 이름에 띄어쓰기가 있으므로, row['필드 명'] 형태로 접근해야 합니다.
                 table += `<td>${row.unique_id || ''}</td>`;
-                table += `<td>${row.날짜 || ''}</td>`;
-                table += `<td>${row.시간 || ''}</td>`;
-                table += `<td>${row['인증 시리얼넘버'] || ''}</td>`;
+                table += `<td>${row['날 짜'] || ''}</td>`;
+                table += `<td>${row['시 간'] || ''}</td>`;
+                table += `<td>${row['인증서 시리얼넘버'] || ''}</td>`;
                 table += '</tr>';
             });
 
