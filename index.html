@@ -1,116 +1,189 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>데이터 조회 서비스</title>
-    <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif; margin: 0; padding: 20px; background-color: #f4f7f9; color: #333; }
-        .container { max-width: 800px; margin: 40px auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        h1 { text-align: center; color: #2c3e50; }
-        .search-box { display: flex; gap: 10px; margin-bottom: 20px; }
-        #searchId { flex-grow: 1; padding: 12px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; }
-        button { padding: 12px 20px; font-size: 16px; cursor: pointer; background-color: #3498db; color: white; border: none; border-radius: 4px; transition: background-color 0.3s; }
-        button:hover { background-color: #2980b9; }
-        #loader { text-align: center; padding: 20px; display: none; }
-        #resultsTable { border-collapse: collapse; margin-top: 20px; width: 100%; font-size: 14px; }
-        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
-        th { background-color: #ecf0f1; color: #34495e; }
-        tr:nth-child(even) { background-color: #f9f9f9; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>이벤트 데이터 조회</title>
+  <style>
+    body { font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,'Open Sans','Helvetica Neue',sans-serif; margin:0; padding:20px; background:#f4f7f9; color:#333; }
+    .container { max-width: 1000px; margin: 40px auto; background:#fff; padding: 24px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
+    h1 { margin: 0 0 12px; color:#2c3e50; }
+    .tabs { display:flex; border-bottom:1px solid #e5e7eb; margin-bottom:16px; gap:4px; }
+    .tab { padding:10px 14px; cursor:pointer; border-radius:6px 6px 0 0; }
+    .tab.active { background:#eaf3ff; color:#1f6feb; border:1px solid #cfe3ff; border-bottom-color:#eaf3ff; }
+    .tabpanel { display:none; }
+    .tabpanel.active { display:block; }
+    .row { display:grid; grid-template-columns: 1fr 1fr auto; gap:10px; margin-bottom:12px; }
+    input, select { padding:10px; font-size:14px; border:1px solid #d1d5db; border-radius:6px; }
+    .btn { padding:10px 14px; background:#3498db; color:#fff; border:0; border-radius:6px; cursor:pointer; }
+    .btn:hover { background:#2980b9; }
+    #loader { font-size:13px; color:#555; display:none; }
+    table { width:100%; border-collapse:collapse; margin-top:12px; font-size:14px; }
+    th, td { border:1px solid #eee; padding:10px; text-align:left; }
+    th { background:#f6f8fa; }
+    tr:nth-child(even){ background:#fafafa; }
+    .meta { display:flex; justify-content:space-between; align-items:center; margin-top:8px; color:#666; font-size:13px; }
+    .tag { background:#eef6ff; color:#1f6feb; border:1px solid #d0e7ff; border-radius:999px; padding:4px 10px; font-size:12px; }
+    .error { color:#d91e18; }
+    details summary { cursor:pointer; }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>데이터 조회</h1>
-        <div class="search-box">
-            <input type="text" id="searchId" placeholder="고유번호를 입력하고 Enter" onkeydown="if(event.keyCode==13) search()">
-            <button onclick="search()">검색</button>
-        </div>
-        <div id="loader">
-            <p>데이터를 검색 중입니다... 잠시만 기다려주세요.</p>
-            <p>경과 시간: <span id="timer">0.0</span>초</p>
-        </div>
-        <div id="results"></div>
+  <div class="container">
+    <h1>이벤트 데이터 조회</h1>
+    <div class="tabs">
+      <div class="tab active" data-tab="uid">고유번호 검색</div>
+      <div class="tab" data-tab="serial">시리얼 검색</div>
     </div>
 
-    <script>
-        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-        // 3부에서 성공한 나의 Render 서버 주소
-        const baseUrl = 'https://my-search-backend.onrender.com';
-        const apiUrl = `${baseUrl}/search`;
-        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+    <!-- 고유번호 검색 탭 -->
+    <div id="panel-uid" class="tabpanel active">
+      <div class="row" style="grid-template-columns: 1fr 1fr 1fr auto;">
+        <input id="uidInput" placeholder="고유번호(unique_id)" />
+        <input id="uidDateFrom" placeholder="시작일자 YYYY.MM.DD (선택)" />
+        <input id="uidDateTo" placeholder="종료일자 YYYY.MM.DD (선택)" />
+        <button class="btn" onclick="searchByUID()">검색</button>
+      </div>
+      <div class="meta">
+        <div id="loader">검색 중… <span id="timer">0.0</span>초</div>
+        <div>
+          <span class="tag" id="pageInfo">page 1</span>
+          <button class="btn" onclick="prevPage()">◀</button>
+          <button class="btn" onclick="nextPage()">▶</button>
+          <select id="limitSel" onchange="changeLimit()">
+            <option>50</option><option>100</option><option>200</option>
+          </select>
+        </div>
+      </div>
+      <div id="uidResults"></div>
+    </div>
 
-        let timerInterval;
+    <!-- 시리얼 검색 탭 -->
+    <div id="panel-serial" class="tabpanel">
+      <div class="row">
+        <input id="serialInput" placeholder="시리얼번호 정확히 입력" />
+        <input id="serialDateFrom" placeholder="시작일자 YYYY.MM.DD (선택)" />
+        <input id="serialDateTo" placeholder="종료일자 YYYY.MM.DD (선택)" />
+        <button class="btn" onclick="searchBySerial()">검색</button>
+      </div>
+      <div id="serialInfo" class="tag" style="display:none;"></div>
+      <div id="serialResults"></div>
+    </div>
+  </div>
 
-        function startTimer() {
-            let startTime = Date.now();
-            document.getElementById('timer').textContent = '0.0';
-            timerInterval = setInterval(() => {
-                const elapsedTime = ((Date.now() - startTime) / 1000).toFixed(1);
-                document.getElementById('timer').textContent = elapsedTime;
-            }, 100);
-        }
+<script>
+/* ===== 환경설정 ===== */
+const baseUrl   = 'https://my-search-backend.onrender.com';
+const apiSearch = `${baseUrl}/search`;           // unique_id용 (배열 반환)
+const apiSerial = `${baseUrl}/search-serial`;    // 시리얼 검색 엔드포인트 (백엔드에 추가 필요)
 
-        function stopTimer() {
-            clearInterval(timerInterval);
-        }
+/* ===== 공통 유틸 ===== */
+let timerInterval; let state = { page:1, limit:50, lastData:null };
+function qs(id){ return document.getElementById(id); }
+function escapeHtml(x){ return String(x).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;'); }
+function startTimer(){ let s=Date.now(); qs('timer').textContent='0.0'; qs('loader').style.display='block'; timerInterval=setInterval(()=>{ qs('timer').textContent=((Date.now()-s)/1000).toFixed(1); },100);} 
+function stopTimer(){ clearInterval(timerInterval); qs('loader').style.display='none'; }
 
-        function search() {
-            const searchId = document.getElementById('searchId').value;
-            if (!searchId) {
-                alert('고유번호를 입력하세요.');
-                return;
-            }
+/* ===== 탭 전환 ===== */
+document.querySelectorAll('.tab').forEach(t=>{
+  t.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.tabpanel').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    qs('panel-'+t.dataset.tab).classList.add('active');
+  });
+});
 
-            document.getElementById('loader').style.display = 'block';
-            document.getElementById('results').innerHTML = '';
-            startTimer();
+/* ===== 고유번호 검색 ===== */
+function buildUIDUrl(page=null){
+  const u = new URL(apiSearch);
+  const id = qs('uidInput').value.trim();
+  const df = qs('uidDateFrom').value.trim();
+  const dt = qs('uidDateTo').value.trim();
+  if(!id){ alert('고유번호를 입력하세요.'); return null; }
+  u.searchParams.set('unique_id', id); // 백엔드가 id/unique_id 둘 다 허용
+  if(df) u.searchParams.set('date_from', df);
+  if(dt) u.searchParams.set('date_to', dt);
+  u.searchParams.set('page', page ?? state.page);
+  u.searchParams.set('limit', state.limit);
+  return u;
+}
 
-            fetch(`${apiUrl}?id=${encodeURIComponent(searchId)}`)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('서버에 문제가 발생했습니다. 잠시 후 다시 시도해주세요.');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    stopTimer();
-                    document.getElementById('loader').style.display = 'none';
-                    displayResults(data);
-                })
-                .catch(error => {
-                    stopTimer();
-                    document.getElementById('loader').style.display = 'none';
-                    document.getElementById('results').innerHTML = `<p style="color: red;">오류: ${error.message}</p>`;
-                    console.error('Fetch Error:', error);
-                });
-        }
+async function searchByUID(page=null){
+  const url = buildUIDUrl(page); if(!url) return;
+  state.page = Number(url.searchParams.get('page'));
+  state.limit= Number(url.searchParams.get('limit'));
+  qs('limitSel').value = String(state.limit);
+  qs('pageInfo').textContent = `page ${state.page}`;
+  try{
+    startTimer();
+    const res = await fetch(url, {mode:'cors'});
+    if(!res.ok) throw new Error('서버 오류');
+    const data = await res.json(); // 배열
+    stopTimer(); state.lastData = data; renderUIDTable(data);
+  }catch(e){ stopTimer(); qs('uidResults').innerHTML = `<p class="error">오류: ${escapeHtml(e.message)}</p>`; }
+}
 
-        function displayResults(data) {
-            const resultsDiv = document.getElementById('results');
-            if (data.length === 0) {
-                resultsDiv.innerHTML = '<p>검색 결과가 없습니다.</p>';
-                return;
-            }
+function renderUIDTable(rows){
+  const div = qs('uidResults');
+  if(!rows || rows.length===0){ div.innerHTML='<p>검색 결과가 없습니다.</p>'; return; }
+  let html = '<table><thead><tr><th>고유번호</th><th>날짜</th><th>시간</th><th>인증샷 시리얼넘버</th></tr></thead><tbody>';
+  rows.forEach(r=>{
+    const serial = r['인증샷 시리얼넘버'] ?? r['인증샷시리얼넘버'] ?? '';
+    html += `<tr>
+      <td>${escapeHtml(r.unique_id ?? '')}</td>
+      <td>${escapeHtml(r['날짜'] ?? '')}</td>
+      <td>${escapeHtml(r['시간'] ?? '')}</td>
+      <td>${escapeHtml(serial)}</td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  div.innerHTML = html;
+}
 
-            let table = '<table id="resultsTable">';
-            // 데이터베이스의 실제 필드 이름과 일치하도록 헤더 수정
-            table += '<thead><tr><th>고유번호</th><th>날짜</th><th>시간</th><th>인증샷 시리얼넘버</th></tr></thead>';
-            table += '<tbody>';
+function prevPage(){ if(state.page>1) searchByUID(state.page-1); }
+function nextPage(){ searchByUID(state.page+1); }
+function changeLimit(){ state.limit = Number(qs('limitSel').value || 50); state.page=1; searchByUID(1); }
+['uidInput','uidDateFrom','uidDateTo'].forEach(id=>qs(id).addEventListener('keydown',e=>{ if(e.key==='Enter') searchByUID(1); }));
 
-            data.forEach(row => {
-                table += '<tr>';
-                // 데이터베이스의 실제 필드 이름과 일치하도록 데이터 접근 방식 수정
-                table += `<td>${row.unique_id || ''}</td>`;
-                table += `<td>${row['날짜'] || ''}</td>`;
-                table += `<td>${row['시간'] || ''}</td>`;
-                table += `<td>${row['인증샷 시리얼넘버'] || ''}</td>`;
-                table += '</tr>';
-            });
+/* ===== 시리얼 검색 ===== */
+async function searchBySerial(){
+  const serial = qs('serialInput').value.trim();
+  const df = qs('serialDateFrom').value.trim();
+  const dt = qs('serialDateTo').value.trim();
+  if(!serial){ alert('시리얼번호를 입력하세요.'); return; }
+  const u = new URL(apiSerial);
+  u.searchParams.set('serial', serial);
+  if(df) u.searchParams.set('date_from', df);
+  if(dt) u.searchParams.set('date_to', dt);
+  qs('serialInfo').style.display='none';
+  qs('serialResults').innerHTML = '조회 중…';
+  try{
+    const res = await fetch(u, {mode:'cors'});
+    if(!res.ok) throw new Error('서버 오류');
+    const arr = await res.json(); // [{unique_id, 날짜, 시간, 인증샷시리얼넘버}]
+    renderSerial(arr);
+    qs('serialInfo').textContent = `${serial} · ${arr.length}건`;
+    qs('serialInfo').style.display='inline-block';
+  }catch(e){
+    qs('serialResults').innerHTML = `<p class="error">오류: ${escapeHtml(e.message)}</p>`;
+  }
+}
 
-            table += '</tbody></table>';
-            resultsDiv.innerHTML = table;
-        }
-    </script>
+function renderSerial(rows){
+  const div = qs('serialResults');
+  if(!rows || rows.length===0){ div.innerHTML='<p>해당 시리얼번호로 조회된 결과가 없습니다.</p>'; return; }
+  // unique_id별로 묶어서 보여주기
+  const byUID = {};
+  rows.forEach(r=>{ const k = r.unique_id || '(unknown)'; (byUID[k] ||= []).push(r); });
+  let html = '<table><thead><tr><th>고유번호</th><th>날짜·시간 목록</th></tr></thead><tbody>';
+  Object.keys(byUID).sort().forEach(uid=>{
+    const lines = byUID[uid].map(r=> `${escapeHtml(r['날짜']||'')} ${escapeHtml(r['시간']||'')}`).join('<br/>');
+    html += `<tr><td>${escapeHtml(uid)}</td><td>${lines}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  div.innerHTML = html;
+}
+</script>
 </body>
 </html>
