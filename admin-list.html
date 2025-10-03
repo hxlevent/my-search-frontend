@@ -29,6 +29,8 @@
     </select>
     <button onclick="load(1)">불러오기</button>
     <button onclick="exportCSV()">CSV 다운로드</button>
+    <button onclick="showAll()">전체 보기</button>
+
   </div>
   <div class="meta">
     <div id="stats" class="tag" style="display:none"></div>
@@ -42,34 +44,69 @@
 </div>
 
 <script>
-const baseUrl = 'https://my-search-backend.onrender.com';   // ← 백엔드 주소로 변경
+
+const baseUrl = 'https://my-search-backend.onrender.com';   // ← 백엔드 주소
 let curPage = 1, curRows = [], totalUnique = 0;
 
 function qs(id){ return document.getElementById(id); }
 function esc(s){ return String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
 
+// ① 페이지 최초 로드 시: 저장된 토큰 복구 → 자동 로드
+document.addEventListener('DOMContentLoaded', () => {
+  const saved = localStorage.getItem('adminToken') || '';
+  if (saved) {
+    qs('token').value = saved;
+    // 자동으로 전체 목록 1페이지 로딩
+    showAll();
+  }
+});
+
+// ② 토큰 입력 후 Enter로도 불러오기
+qs('token').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') load(1);
+});
+
+// ③ 전체 보기: 검색어 비우고 1페이지 로딩
+function showAll(){
+  qs('q').value = '';
+  load(1);
+}
+
 async function load(page){
   const t = qs('token').value.trim();
   if(!t){ alert('관리자 토큰을 입력하세요'); return; }
-  const q = qs('q').value.trim();
+  localStorage.setItem('adminToken', t);      // 토큰 저장
+
+  const q = qs('q').value.trim();             // 비어 있으면 전체
   const limit = qs('limit').value;
+
   const url = new URL(baseUrl + '/admin/summary');
   url.searchParams.set('token', t);
   url.searchParams.set('page', page);
   url.searchParams.set('limit', limit);
-  if(q) url.searchParams.set('q', q);
+  if(q) url.searchParams.set('q', q);         // q가 비어 있으면 아예 안 붙여서 '전체' 요청
 
   qs('wrap').innerHTML = '로딩 중...';
-  const res = await fetch(url);
-  if(!res.ok){ qs('wrap').innerHTML = '<p style="color:#b91c1c">오류: ' + res.status + '</p>'; return; }
-  const data = await res.json();
-  if(!data.ok){ qs('wrap').innerHTML = '<p style="color:#b91c1c">오류: ' + (data.error||'unknown') + '</p>'; return; }
-
-  curPage = data.page; curRows = data.rows; totalUnique = data.total_unique;
-  renderTable(curRows);
-  qs('pageInfo').textContent = `page ${curPage}`;
-  qs('stats').textContent = `총 참가자: ${totalUnique}명 · 이 페이지: ${data.count}명`;
-  qs('stats').style.display = 'inline-block';
+  try{
+    const res = await fetch(url);
+    if(!res.ok){
+      const txt = await res.text().catch(()=>String(res.status));
+      qs('wrap').innerHTML = `<p style="color:#b91c1c">오류: ${res.status}<br>${esc(txt.slice(0,500))}</p>`;
+      return;
+    }
+    const data = await res.json();
+    if(!data.ok){
+      qs('wrap').innerHTML = `<p style="color:#b91c1c">오류: ${esc(data.error||'unknown')}</p>`;
+      return;
+    }
+    curPage = data.page; curRows = data.rows; totalUnique = data.total_unique ?? 0;
+    renderTable(curRows);
+    qs('pageInfo').textContent = `page ${curPage}`;
+    qs('stats').textContent = `총 참가자: ${totalUnique||'-'}명 · 이 페이지: ${data.count}명`;
+    qs('stats').style.display = 'inline-block';
+  }catch(e){
+    qs('wrap').innerHTML = `<p style="color:#b91c1c">오류: ${esc(e.message)}</p>`;
+  }
 }
 
 function renderTable(rows){
@@ -111,4 +148,5 @@ function exportCSV(){
   a.download = `summary_page${curPage}.csv`;
   a.click();
 }
+ 
 </script>
