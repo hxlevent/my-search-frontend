@@ -30,6 +30,8 @@
     <button onclick="load(1)">불러오기</button>
     <button onclick="exportCSV()">CSV 다운로드</button>
     <button onclick="showAll()">전체 보기</button>
+    <button onclick="downloadAll()">전체 다운로드</button>
+
 
   </div>
   <div class="meta">
@@ -148,5 +150,18 @@ function exportCSV(){
   a.download = `summary_page${curPage}.csv`;
   a.click();
 }
- 
+
+function downloadAll(){
+  const t = qs('token').value.trim();
+  if(!t){ alert('관리자 토큰을 입력하세요'); return; }
+  const q = qs('q').value.trim();
+  const url = new URL(baseUrl + '/admin/summary-export');
+  url.searchParams.set('token', t);
+  if(q) url.searchParams.set('q', q);
+  // 그냥 브라우저로 다운로드
+  window.location.href = url.toString();
+}
+
+
+  
 </script>
