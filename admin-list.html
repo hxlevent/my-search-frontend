@@ -120,7 +120,7 @@ function renderTable(rows){
     '<th>사전합계</th><th>개근</th>'+
     '</tr></thead><tbody>';
   rows.forEach(r=>{
-    html += `<tr>
+    html += `<tr onclick="goDetail('${encodeURIComponent(r.unique_id)}')" style="cursor:pointer">
       <td style="text-align:left;padding-left:10px">${esc(r.unique_id)}</td>
       <td>${r.c19||0}</td><td>${r.c20||0}</td><td>${r.c21||0}</td>
       <td>${r.c22||0}</td><td>${r.c23||0}</td><td>${r.c24||0}</td>
@@ -131,6 +131,13 @@ function renderTable(rows){
   });
   html += '</tbody></table>';
   qs('wrap').innerHTML = html;
+}
+
+// ✅ index.html로 이동하는 헬퍼
+function goDetail(uidEnc){
+  // admin-list.html과 index.html이 같은 폴더라면 ./index.html
+  // 경로가 다르면 상대경로 맞춰서 바꿔줘.
+  location.href = `./index.html?uid=${uidEnc}`;
 }
 
 function prev(){ if(curPage>1) load(curPage-1); }
