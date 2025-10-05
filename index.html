@@ -421,6 +421,35 @@ function copyMessage(){
   qs('editedInfo').textContent = '메시지를 클립보드에 복사했습니다.';
   setTimeout(()=> qs('editedInfo').textContent = prev, 1500);
 }
+
+
+// URL ?uid=AA0001 형태로 들어오면 자동으로 입력+조회
+document.addEventListener('DOMContentLoaded', () => {
+  const params = new URLSearchParams(location.search);
+  const uid = params.get('uid');
+  if (uid) {
+    // 탭 UI를 쓰는 경우 '고유번호 검색' 탭으로 전환
+    const tabBtn = document.querySelector('.tab[data-tab="uid"]');
+    if (tabBtn) tabBtn.click?.();
+
+    // 입력창 채우고 바로 검색
+    const input = document.getElementById('uidInput');
+    if (input) {
+      input.value = decodeURIComponent(uid);
+      // 대문자 통일 검색을 원하면 이 줄 주석 해제:
+      // input.value = decodeURIComponent(uid).toUpperCase();
+
+      // 페이지 1로 조회
+      if (typeof searchByUID === 'function') {
+        searchByUID(1);
+      }
+    }
+  }
+});
+
+
+
+    
   </script>
 </body>
 </html>
