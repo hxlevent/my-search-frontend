@@ -18,7 +18,7 @@ h1{margin:0 0 12px;color:#2c3e50;font-size:22px}
 .tabpanel.active{display:block}
 
 /* 입력행 */
-.row{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;margin-bottom:12px}
+.row{display:grid;grid-template-columns:1fr auto;gap:10px;margin-bottom:12px}
 input,select{padding:10px;font-size:14px;border:1px solid #d1d5db;border-radius:8px;width:100%}
 .btn{padding:10px 14px;background:#3498db;color:#fff;border:0;border-radius:8px;cursor:pointer}
 .btn:hover{background:#2980b9}
@@ -37,19 +37,16 @@ tr:nth-child(even){background:#fafafa}
 
 /* 반응형 */
 @media (max-width: 900px){
-  .row{grid-template-columns:1fr 1fr;grid-auto-rows:auto}
-  .row .btn{grid-column:1/-1}
+  .row{grid-template-columns:1fr;grid-auto-rows:auto}
 }
 @media (max-width: 600px){
   body{padding:10px}
   .container{margin:10px auto;padding:14px}
   h1{font-size:18px}
-  .row{grid-template-columns:1fr;gap:8px}
   .tab{font-size:13px}
   table{min-width:520px}
   input,select,.btn{font-size:15px;padding:12px}
 }
-
   </style>
 </head>
 <body>
@@ -65,25 +62,28 @@ tr:nth-child(even){background:#fafafa}
     <div id="panel-uid" class="tabpanel active">
       <div class="row">
         <input id="uidInput" placeholder="고유번호(unique_id)" />
-        <button class="btn" onclick="searchByUID()">검색</button>
-      </div>
-      <div class="meta">
-        <div id="loader">검색 중… <span id="timer">0.0</span>초</div>
-        <div>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <button class="btn" onclick="searchByUID()">검색</button>
           <span class="tag" id="pageInfo">page 1</span>
           <button class="btn" onclick="prevPage()">◀</button>
           <button class="btn" onclick="nextPage()">▶</button>
           <select id="limitSel" onchange="changeLimit()">
-            <option>50</option><option>100</option><option>200</option><option selected>200</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+            <option value="200">200</option>
+            <option value="500" selected>500</option>
           </select>
         </div>
+      </div>
+      <div class="meta">
+        <div id="loader" style="display:none">검색 중… <span id="timer">0.0</span>초</div>
       </div>
       <div id="uidResults"></div>
     </div>
 
-    <!-- 시리얼 검색 탭 (그대로 사용 가능) -->
+    <!-- 시리얼 검색 탭 -->
     <div id="panel-serial" class="tabpanel">
-      <div class="row">
+      <div class="row" style="grid-template-columns:1fr 1fr 1fr auto;">
         <input id="serialInput" placeholder="시리얼번호 정확히 입력" />
         <input id="serialDateFrom" placeholder="시작일자 YYYY.MM.DD (선택)" />
         <input id="serialDateTo" placeholder="종료일자 YYYY.MM.DD (선택)" />
@@ -95,125 +95,153 @@ tr:nth-child(even){background:#fafafa}
   </div>
 
   <script>
-    /* ===== 환경설정 ===== */
-    // ★ 여기만 네 백엔드 도메인으로 바꾸세요
-    const baseUrl   = 'https://my-search-backend.onrender.com';
-    const apiSearch = `${baseUrl}/search`;         // unique_id 검색 (배열 반환)
-    const apiSerial = `${baseUrl}/search-serial`;  // 시리얼 검색
+/* ===== 설정 ===== */
+const baseUrl   = 'https://my-search-backend.onrender.com'; // ← 백엔드 주소
+const apiSearch = `${baseUrl}/search`;         // unique_id 검색 (배열 반환)
+const apiSerial = `${baseUrl}/search-serial`;  // 시리얼 검색
 
-    /* ===== 공통 유틸 ===== */
-    let timerInterval; 
-    let state = { page:1, limit:200, lastData:null, dupData:[] };
-    
-    function wrapTable(html){ return `<div class="table-wrap">${html}</div>`; }
-    function qs(id){ return document.getElementById(id); }
-    function escapeHtml(x){ return String(x).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;'); }
-    function startTimer(){ let s=Date.now(); qs('timer').textContent='0.0'; qs('loader').style.display='block'; timerInterval=setInterval(()=>{ qs('timer').textContent=((Date.now()-s)/1000).toFixed(1); },100);} 
-    function stopTimer(){ clearInterval(timerInterval); qs('loader').style.display='none'; }
+/* ===== 상태/유틸 ===== */
+let timerInterval;
+let state = { page:1, limit:500, lastData:null };
 
-    // 날짜 범위를 "YYYY.MM.DD" 배열로 생성
-    function getDateRange(startStr, endStr) {
-      const toDate = (s) => { const [Y, M, D] = s.split('.').map(Number); return new Date(Y, M - 1, D); };
-      const fmt = (d) => { const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); const day=String(d.getDate()).padStart(2,'0'); return `${y}.${m}.${day}`; };
-      const res = []; let cur = toDate(startStr); const end = toDate(endStr);
-      while (cur <= end) { res.push(fmt(cur)); cur.setDate(cur.getDate() + 1); }
-      return res;
-    }
-    // "YYYY.MM.DD" → "M/D"
-    function toMD(dateStr) { const parts = dateStr.split('.').map(Number); return `${parts[1]}/${parts[2]}`; }
-    // "H:MM"/"HH:MM" → 분
-    function timeToMinutes(t) { if (!t) return null; const [h,m] = t.split(':').map(Number); if (Number.isNaN(h)||Number.isNaN(m)) return null; return h*60+m; }
+function wrapTable(html){ return `<div class="table-wrap">${html}</div>`; }
+function qs(id){ return document.getElementById(id); }
+function escapeHtml(x){ return String(x).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;'); }
+function startTimer(){ let s=Date.now(); qs('timer').textContent='0.0'; qs('loader').style.display='block'; timerInterval=setInterval(()=>{ qs('timer').textContent=((Date.now()-s)/1000).toFixed(1); },100);} 
+function stopTimer(){ clearInterval(timerInterval); qs('loader').style.display='none'; }
 
-    /* ===== 탭 전환 ===== */
-    document.querySelectorAll('.tab').forEach(t=>{
-      t.addEventListener('click',()=>{
-        document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
-        document.querySelectorAll('.tabpanel').forEach(x=>x.classList.remove('active'));
-        t.classList.add('active'); qs('panel-'+t.dataset.tab).classList.add('active');
-      });
-    });
+// 날짜 배열
+function getDateRange(startStr, endStr) {
+  const toDate = (s) => { const [Y, M, D] = s.split('.').map(Number); return new Date(Y, M - 1, D); };
+  const fmt = (d) => { const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); const day=String(d.getDate()).padStart(2,'0'); return `${y}.${m}.${day}`; };
+  const res = []; let cur = toDate(startStr); const end = toDate(endStr);
+  while (cur <= end) { res.push(fmt(cur)); cur.setDate(cur.getDate() + 1); }
+  return res;
+}
+// "YYYY.MM.DD" → "M/D"
+function toMD(dateStr) { const parts = dateStr.split('.').map(Number); return `${parts[1]}/${parts[2]}`; }
 
-    /* ===== 고유번호 검색 ===== */
-    function buildUIDUrl(page=null){
-  const u = new URL(apiSearch);
-  const idRaw = qs('uidInput').value.trim();
-  if(!idRaw){ 
-    alert('고유번호를 입력하세요.'); 
-    return null; 
+// 강화된 시간 파서: 오전/오후/AM/PM/HH:MM[:SS]/공백/한글 구분자 허용
+function timeToMinutes(t) {
+  if (!t) return null;
+  const s = String(t).trim();
+  const ampmMatch = s.match(/오전|오후|AM|PM/i);
+  const ampm = ampmMatch ? ampmMatch[0].toLowerCase() : null;
+  // "HH:MM[:SS]" 또는 "HH시MM분" 등
+  const cleaned = s.replace(/\s+/g,'');
+  const m = cleaned.match(/(\d{1,2})[:시](\d{1,2})/);
+  if (!m) return null;
+  let h = parseInt(m[1], 10);
+  let mm = parseInt(m[2], 10);
+  if (Number.isNaN(h) || Number.isNaN(mm)) return null;
+  if (ampm) {
+    const isPM = /pm|오후/i.test(ampm);
+    const isAM = /am|오전/i.test(ampm);
+    if (isPM && h < 12) h += 12;
+    if (isAM && h === 12) h = 0;
   }
-
-  const id = idRaw.toUpperCase();   // 🔑 여기서 대문자로 변환
- 
-  u.searchParams.set('unique_id', id);
-  u.searchParams.set('page', page ?? state.page);
-  u.searchParams.set('limit', state.limit);
-  return u;
+  if (h < 0 || h > 23 || mm < 0 || mm > 59) return null;
+  return h * 60 + mm;
 }
 
+/* ===== 탭 전환 ===== */
+document.querySelectorAll('.tab').forEach(t=>{
+  t.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.tabpanel').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active'); qs('panel-'+t.dataset.tab).classList.add('active');
+  });
+});
 
-    async function searchByUID(page=null){
-      const url = buildUIDUrl(page); if(!url) return;
-      state.page = Number(url.searchParams.get('page'));
-      state.limit= Number(url.searchParams.get('limit'));
-      qs('limitSel').value = String(state.limit);
-      qs('pageInfo').textContent = `page ${state.page}`;
+/* ===== 공통 페치 ===== */
+async function fetchRows(uid, page, limit) {
+  const safeLimit = Math.max(1, Math.min(limit, 500)); // 1~500
+  const u = new URL(apiSearch);
+  u.searchParams.set('unique_id', uid);
+  u.searchParams.set('page', page);
+  u.searchParams.set('limit', safeLimit);
+  const res = await fetch(u, { mode:'cors' });
+  if (!res.ok) throw new Error('서버 오류');
+  return await res.json();
+}
 
-      try{
-        startTimer();
-        const res = await fetch(url, {mode:'cors'});
-        if(!res.ok) throw new Error('서버 오류');
-        const data = await res.json(); // 배열
-        stopTimer(); state.lastData = data; renderUIDTable(data);
-      }catch(e){
-        stopTimer(); qs('uidResults').innerHTML = `<p class="error">오류: ${escapeHtml(e.message)}</p>`;
-      }
-    }
+/* ===== 고유번호 검색 ===== */
+async function searchByUID(page=null){
+  const idRaw = qs('uidInput').value.trim();
+  if(!idRaw){ alert('고유번호를 입력하세요.'); return; }
+  const uid = idRaw.toUpperCase(); // 대문자 통일 검색
 
-    function prevPage(){ if(state.page>1) searchByUID(state.page-1); }
-    function nextPage(){ searchByUID(state.page+1); }
-    function changeLimit(){ state.limit = Number(qs('limitSel').value || 200); state.page=1; searchByUID(1); }
-    ['uidInput'].forEach(id=>qs(id).addEventListener('keydown',e=>{ if(e.key==='Enter') searchByUID(1); }));
+  state.page = page ?? state.page;
+  qs('limitSel').value = String(state.limit);
+  qs('pageInfo').textContent = `page ${state.page}`;
 
-    // ★ 요약+상세 2단 테이블 렌더 (요구사항 반영: 25일 1차/생방 분리, 개근 o/x)
-   function renderUIDTable(rows){
+  try{
+    startTimer();
+    // 상세 표(현재 페이지) + 요약(전체 1페이지 500행)
+    const [pageRows, allRows] = await Promise.all([
+      fetchRows(uid, state.page, state.limit),
+      fetchRows(uid, 1, 500) // UID당 최대 400이라 가정
+    ]);
+    stopTimer();
+    state.lastData = pageRows;
+    renderUIDTable(pageRows, allRows);
+  }catch(e){
+    stopTimer();
+    qs('uidResults').innerHTML = `<p class="error">오류: ${escapeHtml(e.message)}</p>`;
+  }
+}
+
+function prevPage(){ if(state.page>1) searchByUID(state.page-1); }
+function nextPage(){ searchByUID(state.page+1); }
+function changeLimit(){ state.limit = Number(qs('limitSel').value || 500); state.page=1; searchByUID(1); }
+qs('uidInput').addEventListener('keydown',e=>{ if(e.key==='Enter') searchByUID(1); });
+
+/* ===== 요약+상세 렌더 ===== */
+function renderUIDTable(pageRows, allRows){
   const wrap = qs('uidResults');
-  if (!rows || rows.length === 0) { wrap.innerHTML = '<p>검색 결과가 없습니다.</p>'; return; }
+  const rowsForSummary = (allRows && allRows.length) ? allRows : pageRows;
+  if ((!pageRows || pageRows.length===0) && (!rowsForSummary || rowsForSummary.length===0)) {
+    wrap.innerHTML = '<p>검색 결과가 없습니다.</p>'; 
+    return;
+  }
 
-  // 1) 날짜 범위 (없으면 기본 9/19 ~ 9/25)
+  // 1) 날짜 범위
   const df = '2025.09.19';
   const dt = '2025.09.25';
   const days = getDateRange(df, dt);
+  const day25 = '2025.09.25';
 
-  // 2) 날짜별 건수 + 9/25 특수 분리
+  // 2) 날짜별 카운트 + 9/25 분리 (요약은 전체 rows 기준)
   const counts = Object.fromEntries(days.map(d => [d, 0]));
   let count25_first = 0; // 00:00~09:59
   let countLive     = 0; // 12:00~23:59
-  const day25 = days.find(d => d.endsWith('.09.25')); // 범위에 25일 포함시 분리
 
-  rows.forEach(r => {
-    const d = r['날짜']; const t = r['시간'];
-    if (!d || !Object.prototype.hasOwnProperty.call(counts, d)) return;
-    if (day25 && d === day25) {
+  rowsForSummary.forEach(r => {
+    const d = String(r['날짜'] ?? '').trim();
+    const t = String(r['시간'] ?? '').trim();
+    if (!d || !counts.hasOwnProperty(d)) return;
+
+    if (d === day25) {
       const mins = timeToMinutes(t);
       if (mins !== null) {
-        if (mins <= 9*60 + 59)      count25_first += 1;  // 25일(1차)
-        else if (mins >= 12*60)     countLive += 1;      // 생방
-        // 10:00~11:59는 요약 미반영(상세엔 그대로)
+        if (mins <= 9*60 + 59)      count25_first += 1;   // 1차
+        else if (mins >= 12*60)     countLive     += 1;   // 생방
+        // 10:00~11:59는 요약 미집계(상세에는 그대로 표기)
       }
     } else {
-      counts[d] += 1; // 일반 날짜 카운트
+      counts[d] += 1;
     }
   });
 
-  // 3) 요약 표 (원본 데이터 기준, 읽기전용)
+  // 3) 요약(원본) 표
   const headerLabels = [];
   const headerKeys   = [];
   days.forEach(d => {
-    if (day25 && d === day25) {
-      headerLabels.push(toMD(d) + '(1차)'); headerKeys.push(d + '_first');
-      headerLabels.push('생방');            headerKeys.push(d + '_live');
+    if (d === day25) {
+      headerLabels.push('9/25(1차)'); headerKeys.push(d + '_first');
+      headerLabels.push('생방');       headerKeys.push(d + '_live');
     } else {
-      headerLabels.push(toMD(d));           headerKeys.push(d);
+      headerLabels.push(toMD(d));      headerKeys.push(d);
     }
   });
   const summaryCells = headerKeys.map(key => {
@@ -222,11 +250,12 @@ tr:nth-child(even){background:#fafafa}
     return counts[key] ?? 0;
   });
 
-  // 개근(원본 기준) — 참고용
   let perfectOriginal = true;
-  const days_19_24 = days.filter(d => !(day25 && d === day25));
-  for (const d of days_19_24) if ((counts[d] || 0) < 1) { perfectOriginal = false; break; }
-  if (day25 && count25_first < 1) perfectOriginal = false;
+  for (const d of days) {
+    if (d === day25) continue;
+    if ((counts[d] || 0) < 1) { perfectOriginal = false; break; }
+  }
+  if (count25_first < 1) perfectOriginal = false;
 
   let summary = '<table><thead><tr><th style="min-width:110px">참여 요약(원본)</th>';
   headerLabels.forEach(lbl => { summary += `<th>${lbl}</th>`; });
@@ -235,7 +264,7 @@ tr:nth-child(even){background:#fafafa}
   summary += `<tr><td>개근(원본)</td><td colspan="${headerLabels.length}" class="center strong">${perfectOriginal ? 'o' : 'x'}</td></tr>`;
   summary += '</tbody></table>';
 
-  // 4) 수정 가능 패널 (이 부분이 새로 추가되는 핵심)
+  // 4) 수정 가능한 패널
   const editableHTML = renderEditPanel({
     days, day25,
     baseCounts: counts,
@@ -243,72 +272,32 @@ tr:nth-child(even){background:#fafafa}
     baseLive: countLive
   });
 
-  // 5) 상세 표 (기존)
+  // 5) 상세 표(현재 페이지 rows)
   let detail = '<table style="margin-top:12px"><thead><tr>' +
     '<th>고유번호</th><th>날짜</th><th>시간</th><th>인증샷 시리얼넘버</th>' +
     '</tr></thead><tbody>';
-  rows.forEach(r => {
+  pageRows.forEach(r => {
     const serial = r['인증샷 시리얼넘버'] ?? r['인증샷시리얼넘버'] ?? '';
     detail += `<tr>
       <td>${escapeHtml(r.unique_id ?? '')}</td>
-      <td>${escapeHtml(r['날짜'] ?? '')}</td>
-      <td>${escapeHtml(r['시간'] ?? '')}</td>
+      <td>${escapeHtml(String(r['날짜'] ?? '').trim())}</td>
+      <td>${escapeHtml(String(r['시간'] ?? '').trim())}</td>
       <td>${escapeHtml(serial)}</td>
     </tr>`;
   });
   detail += '</tbody></table>';
 
-     wrap.innerHTML = wrapTable(summary) + wrapTable(editableHTML)+ wrapTable(detail);
+  wrap.innerHTML = wrapTable(summary) + wrapTable(editableHTML) + wrapTable(detail);
 }
 
-    /* ===== 시리얼 검색 (그대로) ===== */
-    async function searchBySerial(){
-      const serial = qs('serialInput').value.trim();
-      const df = qs('serialDateFrom').value.trim();
-      const dt = qs('serialDateTo').value.trim();
-      if(!serial){ alert('시리얼번호를 입력하세요.'); return; }
-      const u = new URL(apiSerial);
-      u.searchParams.set('serial', serial);
-      if(df) u.searchParams.set('date_from', df);
-      if(dt) u.searchParams.set('date_to', dt);
-      qs('serialInfo').style.display='none';
-      qs('serialResults').innerHTML = '조회 중…';
-      try{
-        const res = await fetch(u, {mode:'cors'});
-        if(!res.ok) throw new Error('서버 오류');
-        const arr = await res.json();
-        renderSerial(arr);
-        qs('serialInfo').textContent = `${serial} · ${arr.length}건`;
-        qs('serialInfo').style.display='inline-block';
-      }catch(e){
-        qs('serialResults').innerHTML = `<p class="error">오류: ${escapeHtml(e.message)}</p>`;
-      }
-    }
-
-    function renderSerial(rows){
-      const div = qs('serialResults');
-      if(!rows || rows.length===0){ div.innerHTML='<p>해당 시리얼번호로 조회된 결과가 없습니다.</p>'; return; }
-      const byUID = {};
-      rows.forEach(r=>{ const k = r.unique_id || '(unknown)'; (byUID[k] ||= []).push(r); });
-      let html = '<table><thead><tr><th>고유번호</th><th>날짜·시간 목록</th></tr></thead><tbody>';
-      Object.keys(byUID).sort().forEach(uid=>{
-        const lines = byUID[uid].map(r=> `${escapeHtml(r['날짜']||'')} ${escapeHtml(r['시간']||'')}`).join('<br/>');
-        html += `<tr><td>${escapeHtml(uid)}</td><td>${lines}</td></tr>`;
-      });
-      html += '</tbody></table>';
-      div.innerHTML = wrapTable(html);
-
-    }
-    // 수정 가능한 집계 테이블 + 메시지 영역 렌더
+/* ===== 수정 가능한 집계 패널 + 메시지 ===== */
 function renderEditPanel({ days, day25, baseCounts, base25First, baseLive }) {
-  // 9/19~24 고정 라벨 만들기 (요구 템플릿이 이 구간 기준이기 때문)
   const targetDays = ['2025.09.19','2025.09.20','2025.09.21','2025.09.22','2025.09.23','2025.09.24'];
   const values = {};
   targetDays.forEach(d => { values[d] = (d in baseCounts) ? baseCounts[d] : 0; });
   const v25 = base25First || 0;
   const vLive = baseLive || 0;
 
-  // 입력 테이블
   let html = `
   <div style="margin-top:16px">
     <h3 style="margin:6px 0 4px; color:#2c3e50;">값 수정 & 메시지 생성</h3>
@@ -339,21 +328,20 @@ function renderEditPanel({ days, day25, baseCounts, base25First, baseLive }) {
     <textarea id="messageBox" rows="10" style="width:100%; margin-top:8px; font-family:inherit;"></textarea>
   </div>`;
 
-  // 렌더 후 합계 갱신 이벤트 연결
+  // 렌더 후 이벤트 연결
   setTimeout(() => {
     [...targetDays.map(d=>`edit_${d}`), 'edit_25_first','edit_live'].forEach(id=>{
       const el = qs(id); if (el) el.addEventListener('input', updateEditedSummary);
     });
-    updateEditedSummary(); // 최초 1회 계산
+    updateEditedSummary(); // 최초 1회
   });
 
   return html;
 }
 
-// 입력값 읽기
 function getEditedCounts() {
   const d = k => Math.max(0, Number(qs(k)?.value || 0) | 0);
-  const val = {
+  return {
     '2025.09.19': d('edit_2025.09.19'),
     '2025.09.20': d('edit_2025.09.20'),
     '2025.09.21': d('edit_2025.09.21'),
@@ -363,10 +351,8 @@ function getEditedCounts() {
     '25_first':   d('edit_25_first'),
     'live':       d('edit_live'),
   };
-  return val;
 }
 
-// 합계/개근 표시 갱신 (수정값 기준)
 function updateEditedSummary() {
   const v = getEditedCounts();
   const k = v['2025.09.19'] + v['2025.09.20'] + v['2025.09.21'] +
@@ -375,12 +361,9 @@ function updateEditedSummary() {
   const n = v['live'];     // 생방
   const perfect = [v['2025.09.19'],v['2025.09.20'],v['2025.09.21'],v['2025.09.22'],v['2025.09.23'],v['2025.09.24']].every(x=>x>=1) && v['25_first']>=1;
   const weight = perfect ? (n*8) : n;
-
-  const txt = `사전 합계: ${k}건 · 생방: ${n}건 · 개근: ${perfect ? 'o' : 'x'} · 가중치: ${weight}`;
-  qs('editedInfo').textContent = txt;
+  qs('editedInfo').textContent = `사전 합계: ${k}건 · 생방: ${n}건 · 개근: ${perfect ? 'o' : 'x'} · 가중치: ${weight}`;
 }
 
-// 메시지 생성 (수정값 기준으로 문자열 만들기)
 function generateMessage() {
   const uid = (qs('uidInput').value || '').trim().toUpperCase();
   const v = getEditedCounts();
@@ -411,45 +394,67 @@ function generateMessage() {
   qs('messageBox').value = msg.replaceAll('고유번호', uid || '고유번호');
 }
 
-// 복사
 function copyMessage(){
   const ta = qs('messageBox');
   ta.select(); ta.setSelectionRange(0, 99999);
   document.execCommand('copy');
-  // UX 알림 (간단)
   const prev = qs('editedInfo').textContent;
   qs('editedInfo').textContent = '메시지를 클립보드에 복사했습니다.';
   setTimeout(()=> qs('editedInfo').textContent = prev, 1500);
 }
 
+/* ===== 시리얼 검색 ===== */
+async function searchBySerial(){
+  const serial = qs('serialInput').value.trim();
+  const df = qs('serialDateFrom').value.trim();
+  const dt = qs('serialDateTo').value.trim();
+  if(!serial){ alert('시리얼번호를 입력하세요.'); return; }
+  const u = new URL(apiSerial);
+  u.searchParams.set('serial', serial);
+  if(df) u.searchParams.set('date_from', df);
+  if(dt) u.searchParams.set('date_to', dt);
+  qs('serialInfo').style.display='none';
+  qs('serialResults').innerHTML = '조회 중…';
+  try{
+    const res = await fetch(u, {mode:'cors'});
+    if(!res.ok) throw new Error('서버 오류');
+    const arr = await res.json();
+    renderSerial(arr);
+    qs('serialInfo').textContent = `${serial} · ${arr.length}건`;
+    qs('serialInfo').style.display='inline-block';
+  }catch(e){
+    qs('serialResults').innerHTML = `<p class="error">오류: ${escapeHtml(e.message)}</p>`;
+  }
+}
 
-// URL ?uid=AA0001 형태로 들어오면 자동으로 입력+조회
+function renderSerial(rows){
+  const div = qs('serialResults');
+  if(!rows || rows.length===0){ div.innerHTML='<p>해당 시리얼번호로 조회된 결과가 없습니다.</p>'; return; }
+  const byUID = {};
+  rows.forEach(r=>{ const k = r.unique_id || '(unknown)'; (byUID[k] ||= []).push(r); });
+  let html = '<table><thead><tr><th>고유번호</th><th>날짜·시간 목록</th></tr></thead><tbody>';
+  Object.keys(byUID).sort().forEach(uid=>{
+    const lines = byUID[uid].map(r=> `${escapeHtml((r['날짜']||'').trim())} ${escapeHtml((r['시간']||'').trim())}`).join('<br/>');
+    html += `<tr><td>${escapeHtml(uid)}</td><td>${lines}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  div.innerHTML = wrapTable(html);
+}
+
+/* ===== URL ?uid=AA0001 → 자동 조회 ===== */
 document.addEventListener('DOMContentLoaded', () => {
   const params = new URLSearchParams(location.search);
   const uid = params.get('uid');
   if (uid) {
-    // 탭 UI를 쓰는 경우 '고유번호 검색' 탭으로 전환
     const tabBtn = document.querySelector('.tab[data-tab="uid"]');
     if (tabBtn) tabBtn.click?.();
-
-    // 입력창 채우고 바로 검색
-    const input = document.getElementById('uidInput');
+    const input = qs('uidInput');
     if (input) {
-      input.value = decodeURIComponent(uid);
-      // 대문자 통일 검색을 원하면 이 줄 주석 해제:
-      // input.value = decodeURIComponent(uid).toUpperCase();
-
-      // 페이지 1로 조회
-      if (typeof searchByUID === 'function') {
-        searchByUID(1);
-      }
+      input.value = decodeURIComponent(uid).toUpperCase();
+      searchByUID(1);
     }
   }
 });
-
-
-
-    
   </script>
 </body>
 </html>
