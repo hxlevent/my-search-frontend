@@ -3,196 +3,143 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>이벤트 데이터 조회</title>
+  <title>이벤트 조회·관리 + OCR 일체형</title>
   <style>
 /* 바디/컨테이너 */
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,'Open Sans','Helvetica Neue',sans-serif;margin:0;padding:16px;background:#f4f7f9;color:#333}
-.container{max-width:1100px;margin:24px auto;background:#fff;padding:20px;border-radius:12px;box-shadow:0 4px 14px rgba(0,0,0,.06)}
-
-/* 제목/탭 */
+.container{max-width:1300px;margin:24px auto;background:#fff;padding:20px;border-radius:12px;box-shadow:0 4px 14px rgba(0,0,0,.06)}
 h1{margin:0 0 12px;color:#2c3e50;font-size:22px}
-.tabs{display:flex;flex-wrap:wrap;border-bottom:1px solid #e5e7eb;margin-bottom:12px;gap:6px}
-.tab{padding:10px 14px;cursor:pointer;border-radius:8px 8px 0 0;font-size:14px}
-.tab.active{background:#eaf3ff;color:#1f6feb;border:1px solid #cfe3ff;border-bottom-color:#eaf3ff}
-.tabpanel{display:none}
-.tabpanel.active{display:block}
 
-/* 입력행 */
+/* 입력행/버튼 */
 .row{display:grid;grid-template-columns:1fr auto;gap:10px;margin-bottom:12px}
-input,select{padding:10px;font-size:14px;border:1px solid #d1d5db;border-radius:8px;width:100%}
-.btn{padding:10px 14px;background:#3498db;color:#fff;border:0;border-radius:8px;cursor:pointer}
-.btn:hover{background:#2980b9}
-.meta{display:flex;justify-content:space-between;align-items:center;margin-top:6px;color:#666;font-size:13px;gap:8px}
+input,select,textarea{padding:10px;font-size:14px;border:1px solid #d1d5db;border-radius:8px;width:100%}
+.btn{padding:10px 14px;background:#2563eb;color:#fff;border:0;border-radius:8px;cursor:pointer}
+.btn.secondary{background:#6b7280}
+.btn.danger{background:#b91c1c}
+.btn:hover{filter:brightness(.95)}
+.meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;color:#666;font-size:13px;margin:6px 0}
 .tag{background:#eef6ff;color:#1f6feb;border:1px solid #d0e7ff;border-radius:999px;padding:4px 10px;font-size:12px}
 .error{color:#d91e18}
 .center{text-align:center}
 .strong{font-weight:600}
 
-/* 테이블 + 래퍼(가로 스크롤) */
+/* 테이블 */
 .table-wrap{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
-table{width:100%;border-collapse:collapse;margin-top:10px;font-size:14px;min-width:640px}
-th,td{border:1px solid #eee;padding:10px;text-align:left;white-space:nowrap}
+table{width:100%;border-collapse:collapse;margin-top:10px;font-size:14px;min-width:760px}
+th,td{border:1px solid #eee;padding:8px;white-space:nowrap}
 th{background:#f6f8fa}
 tr:nth-child(even){background:#fafafa}
+td input{width:100%;box-sizing:border-box;padding:6px}
+
+/* 2단 레이아웃 */
+.grid{display:grid;grid-template-columns:1.2fr .8fr;gap:16px}
+.card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:14px}
+.card h2{margin:0 0 8px;font-size:18px;color:#2c3e50}
+
+/* 채팅/OCR 영역 */
+.chat-box{height:220px;overflow-y:auto;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.msg{max-width:90%;padding:8px 12px;border-radius:12px;line-height:1.4;word-break:break-word;white-space:pre-wrap}
+.msg.me{align-self:flex-end;background:#1f6feb;color:#fff;border-bottom-right-radius:4px}
+.msg.bot{align-self:flex-start;background:#e5e7eb;color:#333;border-bottom-left-radius:4px}
+.msg img{max-width:240px;border-radius:8px;border:1px solid #e5e7eb}
 
 /* 반응형 */
-@media (max-width: 900px){
-  .row{grid-template-columns:1fr;grid-auto-rows:auto}
-}
-@media (max-width: 600px){
-  body{padding:10px}
-  .container{margin:10px auto;padding:14px}
-  h1{font-size:18px}
-  .tab{font-size:13px}
-  table{min-width:520px}
-  input,select,.btn{font-size:15px;padding:12px}
-}
-
-/* === 좌우 5:5 레이아웃(기존 기능은 그대로) === */
-.page-split { display:flex; gap:24px; align-items:flex-start; }
-.page-left, .page-right { flex:1 1 0; }
-
-/* 기존 .container가 column 너비를 꽉 채우도록(가로 중앙 max-width 해제) */
-.page-left .container { max-width:unset; margin:0; }
-
-/* === 오른쪽 채팅 카드 === */
-.chat-card {
-  background:#fff; border-radius:12px; box-shadow:0 4px 14px rgba(0,0,0,.06);
-  padding:14px; width:100%;
-  height: 70vh;
-  display:flex; flex-direction:column;
-}
-.chat-title { font-weight:700; font-size:16px; margin-bottom:8px; color:#2c3e50; }
-.chat-box {
-  flex:1; overflow-y:auto; background:#f9fafb; border:1px solid #e5e7eb;
-  border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:8px;
-}
-.chat-row { display:flex; gap:8px; margin-top:10px; }
-#chatInput {
-  flex:1; padding:10px; border:1px solid #d1d5db; border-radius:8px; font-size:14px;
-  background:#fff;
-}
-#chatSend {
-  background:#2563eb; color:#fff; border:none; border-radius:8px; padding:10px 16px; cursor:pointer;
-}
-#chatSend:hover { background:#1d4ed8; }
-
-/* 말풍선 */
-.msg { max-width:80%; padding:8px 12px; border-radius:12px; line-height:1.4; word-break:break-word; white-space:pre-wrap; }
-.msg.me { align-self:flex-end; background:#1f6feb; color:#fff; border-bottom-right-radius:4px; }
-.msg.bot{ align-self:flex-start; background:#e5e7eb; color:#333; border-bottom-left-radius:4px; }
-
-/* 반응형(필요 시) */
-@media (max-width: 1100px){
-  .page-split { flex-direction:column; }
-  .chat-card { height: 56vh; }
-}
+@media (max-width: 1100px){ .grid{grid-template-columns:1fr} }
   </style>
 </head>
 <body>
-  <div class="page-split">
-    <div class="page-left">
-      <div class="container">
-        <h1>이벤트 데이터 조회</h1>
+  <div class="container">
+    <h1>이벤트 조회·관리 + OCR 일체형</h1>
 
-        <div class="tabs">
-          <div class="tab active" data-tab="uid">고유번호 검색</div>
-          <div class="tab" data-tab="serial">시리얼 검색</div>
-          <!-- 추가: 관리(수정) -->
-          <div class="tab" data-tab="edit">관리(수정)</div>
+    <div class="grid">
+      <!-- 좌: 검색 + 관리(수정) -->
+      <div class="card">
+        <h2>① 고유번호 검색 & 관리</h2>
+        <div class="meta">
+          <span class="tag">한 화면에서 검색→수정→반영→메시지까지</span>
+          <span class="tag" id="modeBadge">관리자 모드</span>
         </div>
 
-        <!-- 고유번호 검색 탭 -->
-        <div id="panel-uid" class="tabpanel active">
-          <div class="row">
-            <input id="uidInput" placeholder="고유번호(unique_id)" />
-            <div style="display:flex; gap:8px; align-items:center;">
-              <button class="btn" onclick="searchByUID()">검색</button>
-              <span class="tag" id="pageInfo">page 1</span>
-              <button class="btn" onclick="prevPage()">◀</button>
-              <button class="btn" onclick="nextPage()">▶</button>
-              <select id="limitSel" onchange="changeLimit()">
-                <option value="50">50</option>
-                <option value="100">100</option>
-                <option value="200">200</option>
-                <option value="500" selected>500</option>
-              </select>
-            </div>
-          </div>
-          <div class="meta">
-            <div id="loader" style="display:none">검색 중… <span id="timer">0.0</span>초</div>
-          </div>
-          <div id="uidResults"></div>
+        <!-- 검색줄 -->
+        <div class="row" style="grid-template-columns: 1fr auto auto auto auto;">
+          <input id="uidInput" placeholder="고유번호(unique_id)" />
+          <button class="btn" onclick="searchByUID()">검색(공개)</button>
+          <button class="btn secondary" onclick="loadForEdit()">불러오기(관리)</button>
+          <button class="btn" onclick="addBlankRow()">행 추가</button>
+          <button class="btn danger" onclick="deleteChecked()">선택 삭제</button>
         </div>
 
-        <!-- 시리얼 검색 탭 -->
-        <div id="panel-serial" class="tabpanel">
-          <div class="row" style="grid-template-columns:1fr 1fr 1fr auto;">
-            <input id="serialInput" placeholder="시리얼번호 정확히 입력" />
-            <input id="serialDateFrom" placeholder="시작일자 YYYY.MM.DD (선택)" />
-            <input id="serialDateTo" placeholder="종료일자 YYYY.MM.DD (선택)" />
-            <button class="btn" onclick="searchBySerial()">검색</button>
-          </div>
-          <div id="serialInfo" class="tag" style="display:none;"></div>
-          <div id="serialResults"></div>
+        <!-- 페이지/제한 -->
+        <div class="meta">
+          <span id="pageInfo" class="tag">page 1</span>
+          <button class="btn secondary" onclick="prevPage()">◀</button>
+          <button class="btn secondary" onclick="nextPage()">▶</button>
+          <select id="limitSel" onchange="changeLimit()">
+            <option value="50">50</option>
+            <option value="100">100</option>
+            <option value="200">200</option>
+            <option value="500" selected>500</option>
+          </select>
+          <span id="loader" style="display:none">검색 중… <b id="timer">0.0</b>s</span>
         </div>
 
-        <!-- 관리(수정) 탭 -->
-        <div id="panel-edit" class="tabpanel">
-          <div class="row" style="grid-template-columns:1fr auto auto 1fr auto;">
-            <input id="editUid" placeholder="고유번호 (예: AA0001)" />
-            <input id="editFrom" placeholder="시작일자 YYYY.MM.DD (선택)" />
-            <input id="editTo" placeholder="종료일자 YYYY.MM.DD (선택)" />
-            <input id="editToken" placeholder="관리자 토큰" />
-            <button class="btn" onclick="loadEditable()">불러오기</button>
-          </div>
+        <!-- 요약(원본) -->
+        <div id="summaryBox" class="table-wrap"></div>
 
-          <div class="meta">
-            <span class="tag" id="editMeta" style="display:none;"></span>
-            <div style="display:flex; gap:8px;">
-              <button class="btn" onclick="addRow()">행 추가</button>
-              <button class="btn" onclick="deleteSelected()">선택 삭제</button>
-              <button class="btn" onclick="saveEdits()">반영</button>
-            </div>
-          </div>
+        <!-- 관리 테이블 -->
+        <div class="table-wrap" id="editTableWrap"></div>
 
-          <div class="table-wrap" id="editTableWrap" style="margin-top:10px;"></div>
-          <div id="editMsg" class="meta" style="color:#666;"></div>
+        <!-- 반영 + 메시지 -->
+        <div class="meta">
+          <button class="btn" id="applyBtn" onclick="applyBulk()">DB 반영</button>
+          <button class="btn secondary" onclick="generateAndCopy()">메시지 생성 & 복사</button>
+          <span id="flash" class="tag" style="display:none"></span>
         </div>
+
+        <!-- 최종 메시지 -->
+        <textarea id="messageBox" rows="10" placeholder="최종안내 메시지" style="width:100%;margin-top:6px;"></textarea>
       </div>
-    </div>
 
-    <div class="page-right">
-      <div class="chat-card">
-        <div class="chat-title">채팅</div>
+      <!-- 우: OCR + 로그 -->
+      <div class="card">
+        <h2>② 인증서 OCR 붙여넣기</h2>
+        <div class="meta"><span class="tag">캡처를 복사(Ctrl+C) → 이 페이지에 붙여넣기(Ctrl+V)</span></div>
         <div id="chatBox" class="chat-box"></div>
-        <div class="chat-row">
-          <input id="chatInput" type="text" placeholder="메시지를 입력하고 Enter를 누르세요…" />
-          <button id="chatSend">입력</button>
+        <div class="meta">
+          <input type="file" id="fileInput" accept="image/*" />
+          <button class="btn" onclick="ocrFromFile()">파일 OCR</button>
         </div>
       </div>
     </div>
   </div>
 
   <script>
-/* ===== 설정 ===== */
-const baseUrl   = 'https://my-search-backend.onrender.com'; // ← 백엔드 주소
-const apiSearch = `${baseUrl}/search`;         // unique_id 검색 (배열 반환)
-const apiSerial = `${baseUrl}/search-serial`;  // 시리얼 검색
-const apiList   = `${baseUrl}/admin/records`;  // 편집용 목록
-const apiBulk   = `${baseUrl}/admin/records/bulk`; // 벌크 저장
+/** =========================
+ *  상수(보안 무시 버전)
+ *  ========================= */
+const baseUrl      = 'https://my-search-backend.onrender.com'; // ← 백엔드 주소
+const apiSearch    = `${baseUrl}/search`;
+const apiAdminList = `${baseUrl}/admin/records`;
+const apiBulk      = `${baseUrl}/admin/records/bulk`;
 
-/* ===== 상태/유틸 ===== */
+const ADMIN_TOKEN  = 'PASTE_YOUR_ADMIN_TOKEN_HERE'; // ← 관리자 고유키(파일 안에 박아둠)
+const OCRSPACE_KEY = 'K81476248188957';             // ← OCR.space 키(파일 안에 박아둠)
+
+/** =========================
+ *  상태/유틸
+ *  ========================= */
 let timerInterval;
-let state = { page:1, limit:500, lastData:null };
+let state = { page:1, limit:500, lastSearchRows:[], editRows:[], inserts:[], updates:{}, deletes:new Set() };
 
-function wrapTable(html){ return `<div class="table-wrap">${html}</div>`; }
 function qs(id){ return document.getElementById(id); }
 function escapeHtml(x){ return String(x).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;'); }
-function startTimer(){ let s=Date.now(); qs('timer').textContent='0.0'; qs('loader').style.display='block'; timerInterval=setInterval(()=>{ qs('timer').textContent=((Date.now()-s)/1000).toFixed(1); },100);} 
+function startTimer(){ let s=Date.now(); qs('timer').textContent='0.0'; qs('loader').style.display='inline-block'; timerInterval=setInterval(()=>{ qs('timer').textContent=((Date.now()-s)/1000).toFixed(1); },100); }
 function stopTimer(){ clearInterval(timerInterval); qs('loader').style.display='none'; }
+function flash(msg){ const el=qs('flash'); el.textContent=msg; el.style.display='inline-block'; setTimeout(()=>{el.style.display='none'},1800); }
+function toUpper(s){ return (s||'').trim().toUpperCase(); }
+function v(v){ return (v||'').trim(); }
 
-// 날짜 배열
+/** 날짜범위/라벨/시간파서 (요약 계산용) */
 function getDateRange(startStr, endStr) {
   const toDate = (s) => { const [Y, M, D] = s.split('.').map(Number); return new Date(Y, M - 1, D); };
   const fmt = (d) => { const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); const day=String(d.getDate()).padStart(2,'0'); return `${y}.${m}.${day}`; };
@@ -200,15 +147,12 @@ function getDateRange(startStr, endStr) {
   while (cur <= end) { res.push(fmt(cur)); cur.setDate(cur.getDate() + 1); }
   return res;
 }
-// "YYYY.MM.DD" → "M/D"
 function toMD(dateStr) { const parts = dateStr.split('.').map(Number); return `${parts[1]}/${parts[2]}`; }
-
-// 강화된 시간 파서
 function timeToMinutes(t) {
   if (!t) return null;
   const s = String(t).trim();
   const ampmMatch = s.match(/오전|오후|AM|PM/i);
-  const ampm = ampmMatch ? s.toLowerCase() : null;
+  const ampm = ampmMatch ? ampmMatch[0].toLowerCase() : null;
   const cleaned = s.replace(/\s+/g,'');
   const m = cleaned.match(/(\d{1,2})[:시](\d{1,2})/);
   if (!m) return null;
@@ -225,18 +169,11 @@ function timeToMinutes(t) {
   return h * 60 + mm;
 }
 
-/* ===== 탭 전환 ===== */
-document.querySelectorAll('.tab').forEach(t=>{
-  t.addEventListener('click',()=>{
-    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
-    document.querySelectorAll('.tabpanel').forEach(x=>x.classList.remove('active'));
-    t.classList.add('active'); qs('panel-'+t.dataset.tab).classList.add('active');
-  });
-});
-
-/* ===== 공통 페치 ===== */
+/** =========================
+ *  공개 검색(API /search)
+ *  ========================= */
 async function fetchRows(uid, page, limit) {
-  const safeLimit = Math.max(1, Math.min(limit, 500)); // 1~500
+  const safeLimit = Math.max(1, Math.min(limit, 500));
   const u = new URL(apiSearch);
   u.searchParams.set('unique_id', uid);
   u.searchParams.set('page', page);
@@ -246,11 +183,10 @@ async function fetchRows(uid, page, limit) {
   return await res.json();
 }
 
-/* ===== 고유번호 검색 ===== */
 async function searchByUID(page=null){
   const idRaw = qs('uidInput').value.trim();
   if(!idRaw){ alert('고유번호를 입력하세요.'); return; }
-  const uid = idRaw.toUpperCase();
+  const uid = toUpper(idRaw);
 
   state.page = page ?? state.page;
   qs('limitSel').value = String(state.limit);
@@ -263,192 +199,176 @@ async function searchByUID(page=null){
       fetchRows(uid, 1, 500)
     ]);
     stopTimer();
-    state.lastData = pageRows;
-    renderUIDTable(pageRows, allRows);
+    state.lastSearchRows = pageRows;
+    renderSummary(allRows.length ? allRows : pageRows);
+    // 관리 테이블도 검색 결과 기반으로 보여주도록 초기화
+    state.editRows = (allRows.length ? allRows : pageRows).map(r => ({...r, _id:null}));
+    state.inserts = []; state.updates={}; state.deletes.clear?.();
+    renderEditTable();
   }catch(e){
     stopTimer();
-    qs('uidResults').innerHTML = `<p class="error">오류: ${escapeHtml(e.message)}</p>`;
+    qs('summaryBox').innerHTML = `<p class="error">오류: ${escapeHtml(e.message)}</p>`;
   }
 }
 
 function prevPage(){ if(state.page>1) searchByUID(state.page-1); }
 function nextPage(){ searchByUID(state.page+1); }
 function changeLimit(){ state.limit = Number(qs('limitSel').value || 500); state.page=1; searchByUID(1); }
-qs('uidInput').addEventListener('keydown',e=>{ if(e.key==='Enter') searchByUID(1); });
 
-/* ===== 요약+상세 렌더 ===== */
-function renderUIDTable(pageRows, allRows){
-  const wrap = qs('uidResults');
-  const rowsForSummary = (allRows && allRows.length) ? allRows : pageRows;
-  if ((!pageRows || pageRows.length===0) && (!rowsForSummary || rowsForSummary.length===0)) {
-    wrap.innerHTML = '<p>검색 결과가 없습니다.</p>'; 
-    return;
-  }
+/** =========================
+ *  관리자 조회(/admin/records) & 반영(/admin/records/bulk)
+ *  ========================= */
+async function loadForEdit(){
+  const uid = toUpper(qs('uidInput').value);
+  if(!uid){ alert('고유번호를 입력하세요.'); return; }
 
-  const df = '2025.09.19';
-  const dt = '2025.09.25';
+  const u = new URL(apiAdminList);
+  u.searchParams.set('unique_id', uid);
+
+  const res = await fetch(u, {
+    method: 'GET',
+    headers: { 'X-Admin-Token': ADMIN_TOKEN },
+    mode: 'cors'
+  });
+  if(!res.ok){ alert('관리 조회 실패(토큰/서버 확인)'); return; }
+  const j = await res.json();
+  const rows = (j.rows||[]).map(r => ({
+    _id: r._id || null,
+    unique_id: r.unique_id || uid,
+    '날짜': r['날짜'] || '',
+    '시간': r['시간'] || '',
+    '인증샷 시리얼넘버': r['인증샷 시리얼넘버'] || r['인증샷시리얼넘버'] || ''
+  }));
+  state.editRows = rows;
+  state.inserts = []; state.updates={}; state.deletes = new Set();
+  renderEditTable();
+  renderSummary(rows);
+  flash('관리 데이터 불러옴');
+}
+
+async function applyBulk(){
+  const payload = {
+    insert: state.inserts.map(x => ({
+      unique_id: toUpper(x.unique_id),
+      '날짜': v(x['날짜']),
+      '시간': v(x['시간']),
+      '인증샷 시리얼넘버': v(x['인증샷 시리얼넘버'])
+    })),
+    update: Object.values(state.updates).map(x => ({
+      _id: x._id,
+      unique_id: toUpper(x.unique_id),
+      '날짜': v(x['날짜']),
+      '시간': v(x['시간']),
+      '인증샷 시리얼넘버': v(x['인증샷 시리얼넘버'])
+    })),
+    delete: Array.from(state.deletes)
+  };
+
+  const res = await fetch(apiBulk, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Admin-Token': ADMIN_TOKEN
+    },
+    body: JSON.stringify(payload),
+    mode: 'cors'
+  });
+  if(!res.ok){ alert('DB 반영 실패'); return; }
+  const r = await res.json();
+  flash(`반영 완료 (matched:${r.matched||0} / modified:${r.modified||0} / upserts:${r.upserts||0} / deleted:${r.deleted||0})`);
+
+  // 반영 후 최신 데이터로 재조회 → 요약/메시지 업데이트
+  await loadForEdit();
+  generateMessage(); // 최신 rows 기준 메시지 자동 생성
+}
+
+/** =========================
+ *  요약 렌더 & 메시지 생성
+ *  ========================= */
+function renderSummary(rows){
+  // 1) 날짜 범위
+  const df = '2025.09.19', dt = '2025.09.25', day25 = '2025.09.25';
   const days = getDateRange(df, dt);
-  const day25 = '2025.09.25';
 
+  // 2) 집계
   const counts = Object.fromEntries(days.map(d => [d, 0]));
-  let count25_first = 0;
-  let countLive     = 0;
-
-  rowsForSummary.forEach(r => {
-    const d = String(r['날짜'] ?? '').trim();
-    const t = String(r['시간'] ?? '').trim();
-    if (!d || !counts.hasOwnProperty(d)) return;
-    if (d === day25) {
+  let count25_first=0, countLive=0;
+  rows.forEach(r=>{
+    const d = String(r['날짜']||'').trim();
+    const t = String(r['시간']||'').trim();
+    if(!d || !counts.hasOwnProperty(d)) return;
+    if(d===day25){
       const mins = timeToMinutes(t);
-      if (mins !== null) {
-        if (mins <= 9*60 + 59)      count25_first += 1;
-        else if (mins >= 12*60)     countLive     += 1;
+      if(mins!==null){
+        if(mins<=9*60+59) count25_first += 1;
+        else if(mins>=12*60) countLive += 1;
       }
-    } else {
-      counts[d] += 1;
+    }else{
+      counts[d]+=1;
     }
   });
 
-  const headerLabels = [], headerKeys = [];
-  days.forEach(d => {
-    if (d === day25) {
-      headerLabels.push('9/25(1차)'); headerKeys.push(d + '_first');
-      headerLabels.push('생방');       headerKeys.push(d + '_live');
-    } else {
-      headerLabels.push(toMD(d));      headerKeys.push(d);
-    }
+  // 3) 표
+  const headerLabels=[], headerKeys=[];
+  days.forEach(d=>{
+    if(d===day25){ headerLabels.push('9/25(1차)'); headerKeys.push(d+'_first'); headerLabels.push('생방'); headerKeys.push(d+'_live'); }
+    else { headerLabels.push(toMD(d)); headerKeys.push(d); }
   });
-  const summaryCells = headerKeys.map(key => {
-    if (key.endsWith('_first')) return count25_first;
-    if (key.endsWith('_live'))  return countLive;
-    return counts[key] ?? 0;
+  const summaryCells = headerKeys.map(k=>{
+    if(k.endsWith('_first')) return count25_first;
+    if(k.endsWith('_live'))  return countLive;
+    return counts[k]||0;
   });
 
-  let perfectOriginal = true;
-  for (const d of days) {
-    if (d === day25) continue;
-    if ((counts[d] || 0) < 1) { perfectOriginal = false; break; }
-  }
-  if (count25_first < 1) perfectOriginal = false;
+  let perfect = true;
+  for(const d of days){ if(d===day25) continue; if((counts[d]||0)<1){ perfect=false; break; } }
+  if(count25_first<1) perfect=false;
 
-  let summary = '<table><thead><tr><th style="min-width:110px">참여 요약(원본)</th>';
-  headerLabels.forEach(lbl => { summary += `<th>${lbl}</th>`; });
-  summary += '</tr></thead><tbody>';
-  summary += `<tr><td>건수</td>${summaryCells.map(c => `<td class="center">${c}</td>`).join('')}</tr>`;
-  summary += `<tr><td>개근(원본)</td><td colspan="${headerLabels.length}" class="center strong">${perfectOriginal ? 'o' : 'x'}</td></tr>`;
-  summary += '</tbody></table>';
+  let html = '<table><thead><tr><th style="min-width:140px">참여 요약(최신)</th>';
+  headerLabels.forEach(lbl=> html+=`<th>${lbl}</th>`);
+  html += '</tr></thead><tbody>';
+  html += `<tr><td>건수</td>${summaryCells.map(c=>`<td class="center">${c}</td>`).join('')}</tr>`;
+  html += `<tr><td>개근</td><td class="center strong" colspan="${headerLabels.length}">${perfect?'o':'x'}</td></tr>`;
+  html += '</tbody></table>';
 
-  // 메시지 패널(기존 동작 유지)
-  const editableHTML = renderEditPanel({
-    days, day25,
-    baseCounts: counts,
-    base25First: count25_first,
-    baseLive: countLive
-  });
+  qs('summaryBox').innerHTML = html;
 
-  let detail = '<table style="margin-top:12px"><thead><tr>' +
-    '<th>고유번호</th><th>날짜</th><th>시간</th><th>인증샷 시리얼넘버</th>' +
-    '</tr></thead><tbody>';
-  pageRows.forEach(r => {
-    const serial = r['인증샷 시리얼넘버'] ?? r['인증샷시리얼넘버'] ?? '';
-    detail += `<tr>
-      <td>${escapeHtml(r.unique_id ?? '')}</td>
-      <td>${escapeHtml(String(r['날짜'] ?? '').trim())}</td>
-      <td>${escapeHtml(String(r['시간'] ?? '').trim())}</td>
-      <td>${escapeHtml(serial)}</td>
-    </tr>`;
-  });
-  detail += '</tbody></table>';
-
-  wrap.innerHTML = wrapTable(summary) + wrapTable(editableHTML) + wrapTable(detail);
-}
-
-/* ===== 메시지 패널(기존) ===== */
-function renderEditPanel({ days, day25, baseCounts, base25First, baseLive }) {
-  const v = {
-    '2025.09.19': baseCounts['2025.09.19'] || 0,
-    '2025.09.20': baseCounts['2025.09.20'] || 0,
-    '2025.09.21': baseCounts['2025.09.21'] || 0,
-    '2025.09.22': baseCounts['2025.09.22'] || 0,
-    '2025.09.23': baseCounts['2025.09.23'] || 0,
-    '2025.09.24': baseCounts['2025.09.24'] || 0,
-    '25_first': base25First || 0,
-    'live': baseLive || 0
-  };
-
-  const k = v['2025.09.19'] + v['2025.09.20'] + v['2025.09.21'] +
-            v['2025.09.22'] + v['2025.09.23'] + v['2025.09.24'] + v['25_first'];
-  const n = v['live'];
-  const perfect = [v['2025.09.19'], v['2025.09.20'], v['2025.09.21'],
-                   v['2025.09.22'], v['2025.09.23'], v['2025.09.24']]
-                   .every(x => x >= 1) && v['25_first'] >= 1;
-  const weight = perfect ? (n * 8) : n;
-
-  state.lastSummary = v;
-
-  let html = `
-  <div style="margin-top:16px">
-    <h3 style="margin:6px 0 4px; color:#2c3e50;">메시지 생성</h3>
-    <div class="meta" style="margin-top:8px">
-      <div id="editedInfo" class="tag">
-        사전 합계: ${k}건 · 생방: ${n}건 · 개근: ${perfect ? 'o' : 'x'} · 가중치: ${weight}
-      </div>
-      <div>
-        <button class="btn" onclick="generateAndCopy()">메시지 생성 & 복사</button>
-      </div>
-    </div>
-    <textarea id="messageBox" rows="10" style="width:100%; margin-top:8px; font-family:inherit;"></textarea>
-  </div>`;
-  return html;
-}
-
-function getEditedCounts() {
-  return state.lastSummary || {
-    '2025.09.19': 0,'2025.09.20': 0,'2025.09.21': 0,
-    '2025.09.22': 0,'2025.09.23': 0,'2025.09.24': 0,
-    '25_first': 0,'live': 0
+  // 메시지용 상태 저장
+  state.summaryForMsg = {
+    a: counts['2025.09.19']||0, b: counts['2025.09.20']||0, c: counts['2025.09.21']||0,
+    d: counts['2025.09.22']||0, e: counts['2025.09.23']||0, f: counts['2025.09.24']||0,
+    g: count25_first, n: countLive, perfect
   };
 }
-function updateEditedSummary() {
-  const v = getEditedCounts();
-  const k = v['2025.09.19']+v['2025.09.20']+v['2025.09.21']+v['2025.09.22']+v['2025.09.23']+v['2025.09.24']+v['25_first'];
-  const n = v['live'];
-  const perfect = [v['2025.09.19'],v['2025.09.20'],v['2025.09.21'],v['2025.09.22'],v['2025.09.23'],v['2025.09.24']].every(x=>x>=1) && v['25_first']>=1;
-  const weight = perfect ? (n*8) : n;
-  qs('editedInfo').textContent = `사전 합계: ${k}건 · 생방: ${n}건 · 개근: ${perfect ? 'o' : 'x'} · 가중치: ${weight}`;
-}
-function generateMessage() {
-  const uid = (qs('uidInput').value || '').trim().toUpperCase();
-  const v = getEditedCounts();
-  const a=v['2025.09.19'], b=v['2025.09.20'], c=v['2025.09.21'],
-        d=v['2025.09.22'], e=v['2025.09.23'], f=v['2025.09.24'],
-        g=v['25_first'],   n=v['live'];
-  const k = a+b+c+d+e+f+g;
-  const perfect = [a,b,c,d,e,f].every(x=>x>=1) && g>=1;
-  const weight = perfect ? (n*8) : n;
+
+function generateMessage(){
+  const uid = toUpper(qs('uidInput').value) || '고유번호';
+  const s = state.summaryForMsg || {a:0,b:0,c:0,d:0,e:0,f:0,g:0,n:0,perfect:false};
+  const k = s.a+s.b+s.c+s.d+s.e+s.f+s.g;
+  const weight = s.perfect ? (s.n*8) : s.n;
 
   const msg =
-`📢 고유번호 님, 최종 집계 안내입니다.
+`📢 ${uid} 님, 최종 집계 안내입니다.
 
 ✔전체 투표 참여내역
 (09.19 - 09.25)
-19일 - ${a}건 
-20일 - ${b}건 
-21일 - ${c}건 
-22일 - ${d}건 
-23일 - ${e}건 
-24일 - ${f}건 
-25일 사전투표 - ${g}건 
-25일 생방투표 - ${n}건
+19일 - ${s.a}건 
+20일 - ${s.b}건 
+21일 - ${s.c}건 
+22일 - ${s.d}건 
+23일 - ${s.e}건 
+24일 - ${s.f}건 
+25일 사전투표 - ${s.g}건 
+25일 생방투표 - ${s.n}건
 
 🍀 사전 투표기간 총 누적투표수 : ${k}건 
 (생방 투표는 누적투표수에 포함되지 않습니다.)
 
-고유번호 님은 ${perfect ? '개근에 해당됩니다.' : '개근에 해당되지 않습니다.'}
+${uid} 님은 ${s.perfect ? '개근에 해당됩니다.' : '개근에 해당되지 않습니다.'}
 개근은 19일 투표부터 25일 오전 투표까지 모두 해주신 분들만 해당됩니다.
 
-25일 생방 투표 참여내역은 ${n}건입니다.
-개근 여부에 따른 생방 이벤트 총 가중치는 ${perfect ? `${n}→ 8×${n} = ${weight}` : `${weight}`} 입니다.
+25일 생방 투표 참여내역은 ${s.n}건입니다.
+개근 여부에 따른 생방 이벤트 총 가중치는 ${s.perfect ? `${s.n}→ 8×${s.n} = ${weight}` : `${weight}`} 입니다.
 
 씬롱이에게 투표해주셔서 감사드립니다😺
 원활한 검수를 위해 답장은 보내지 말아주세요🙏
@@ -457,136 +377,123 @@ function generateMessage() {
 반드시 문의 전 문의 채널 하단의 양식을 참고해서 문의해주세요🙏
 문의 채널 링크 📍 
 http://pf.kakao.com/_cFxexcn `;
-  qs('messageBox').value = msg.replaceAll('고유번호', uid || '고유번호');
+  qs('messageBox').value = msg;
 }
+
 function copyMessage(){
   const ta = qs('messageBox');
   ta.select(); ta.setSelectionRange(0, 99999);
   document.execCommand('copy');
-  const prev = qs('editedInfo').textContent;
-  qs('editedInfo').textContent = '메시지를 클립보드에 복사했습니다.';
-  setTimeout(()=> qs('editedInfo').textContent = prev, 1500);
+  flash('메시지를 클립보드에 복사했습니다.');
 }
-function generateAndCopy() {
-  generateMessage();
-  setTimeout(copyMessage, 100);
-}
+function generateAndCopy(){ generateMessage(); setTimeout(copyMessage, 80); }
 
-/* ===== 시리얼 검색 ===== */
-async function searchBySerial(){
-  const serial = qs('serialInput').value.trim();
-  const df = qs('serialDateFrom').value.trim();
-  const dt = qs('serialDateTo').value.trim();
-  if(!serial){ alert('시리얼번호를 입력하세요.'); return; }
-  const u = new URL(apiSerial);
-  u.searchParams.set('serial', serial);
-  if(df) u.searchParams.set('date_from', df);
-  if(dt) u.searchParams.set('date_to', dt);
-  qs('serialInfo').style.display='none';
-  qs('serialResults').innerHTML = '조회 중…';
-  try{
-    const res = await fetch(u, {mode:'cors'});
-    if(!res.ok) throw new Error('서버 오류');
-    const arr = await res.json();
-    renderSerial(arr);
-    qs('serialInfo').textContent = `${serial} · ${arr.length}건`;
-    qs('serialInfo').style.display='inline-block';
-  }catch(e){
-    qs('serialResults').innerHTML = `<p class="error">오류: ${escapeHtml(e.message)}</p>`;
-  }
-}
-function renderSerial(rows){
-  const div = qs('serialResults');
-  if(!rows || rows.length===0){ div.innerHTML='<p>해당 시리얼번호로 조회된 결과가 없습니다.</p>'; return; }
-  const byUID = {};
-  rows.forEach(r=>{ const k = r.unique_id || '(unknown)'; (byUID[k] ||= []).push(r); });
-  let html = '<table><thead><tr><th>고유번호</th><th>날짜·시간 목록</th></tr></thead><tbody>';
-  Object.keys(byUID).sort().forEach(uid=>{
-    const lines = byUID[uid].map(r=> `${escapeHtml((r['날짜']||'').trim())} ${escapeHtml((r['시간']||'').trim())}`).join('<br/>');
-    html += `<tr><td>${escapeHtml(uid)}</td><td>${lines}</td></tr>`;
+/** =========================
+ *  관리 테이블 렌더/조작
+ *  ========================= */
+function renderEditTable(){
+  const rows = state.editRows;
+  let html = '<table><thead><tr>' +
+    '<th><input type="checkbox" id="chkAll" onchange="toggleAll(this)"/></th>' +
+    '<th>고유번호</th><th>날짜</th><th>시간</th><th>인증샷 시리얼넘버</th><th>_id</th>' +
+    '</tr></thead><tbody>';
+
+  rows.forEach((r, idx)=>{
+    html += `<tr>
+      <td><input type="checkbox" class="rowchk" data-idx="${idx}" ${state.deletes.has(r._id)?'checked':''}></td>
+      <td><input value="${escapeHtml(r.unique_id||'')}" oninput="onCellEdit(${idx}, 'unique_id', this.value)" /></td>
+      <td><input value="${escapeHtml(r['날짜']||'')}" oninput="onCellEdit(${idx}, '날짜', this.value)" /></td>
+      <td><input value="${escapeHtml(r['시간']||'')}" oninput="onCellEdit(${idx}, '시간', this.value)" /></td>
+      <td><input value="${escapeHtml(r['인증샷 시리얼넘버']||'')}" oninput="onCellEdit(${idx}, '인증샷 시리얼넘버', this.value)" /></td>
+      <td>${r._id ? escapeHtml(r._id) : ''}</td>
+    </tr>`;
   });
   html += '</tbody></table>';
-  div.innerHTML = wrapTable(html);
+
+  qs('editTableWrap').innerHTML = html;
+  const applyBtn = qs('applyBtn'); if(applyBtn) applyBtn.disabled = false;
 }
 
-/* ===== URL ?uid=AA0001 → 자동 조회 ===== */
-document.addEventListener('DOMContentLoaded', () => {
-  const params = new URLSearchParams(location.search);
-  const uid = params.get('uid');
-  if (uid) {
-    const tabBtn = document.querySelector('.tab[data-tab="uid"]');
-    if (tabBtn) tabBtn.click?.();
-    const input = qs('uidInput');
-    if (input) {
-      input.value = decodeURIComponent(uid).toUpperCase();
-      searchByUID(1);
+function toggleAll(box){
+  const chks = document.querySelectorAll('.rowchk');
+  chks.forEach(c => { c.checked = box.checked; const idx = Number(c.dataset.idx); const r=state.editRows[idx]; if(r._id){ if(c.checked) state.deletes.add(r._id); else state.deletes.delete(r._id);} });
+}
+
+function onCellEdit(idx, key, value){
+  const row = state.editRows[idx];
+  row[key] = value;
+  if(row._id){ // 기존행 → 업데이트 큐
+    state.updates[row._id] = {
+      _id: row._id,
+      unique_id: toUpper(row.unique_id),
+      '날짜': v(row['날짜']),
+      '시간': v(row['시간']),
+      '인증샷 시리얼넘버': v(row['인증샷 시리얼넘버'])
+    };
+  }else{
+    // 신규행은 inserts 배열 내부 원본을 갱신
+    const found = state.inserts.find(x=>x._tmpId===row._tmpId);
+    if(found){ found[key]=value; } // 동일 참조 보장 안돼서 동기화
+  }
+}
+
+function addBlankRow(){
+  const uid = toUpper(qs('uidInput').value);
+  if(!uid){ alert('고유번호를 먼저 입력하세요.'); return; }
+  const tmpId = 'tmp_'+Math.random().toString(36).slice(2,8);
+  const row = {_tmpId: tmpId, _id:null, unique_id: uid, '날짜':'', '시간':'', '인증샷 시리얼넘버':''};
+  state.editRows.push(row);
+  state.inserts.push({...row});
+  renderEditTable();
+}
+
+function deleteChecked(){
+  const chks = document.querySelectorAll('.rowchk:checked');
+  if(chks.length===0){ alert('선택된 행이 없습니다.'); return; }
+  // 표시상 제거 + 큐 반영
+  const toDeleteIdx = new Set(Array.from(chks).map(c=>Number(c.dataset.idx)));
+  const remain = [];
+  state.editRows.forEach((r,i)=>{
+    if(toDeleteIdx.has(i)){
+      if(r._id) state.deletes.add(r._id);
+      // 신규행인 경우 inserts에서 제거
+      if(r._tmpId) state.inserts = state.inserts.filter(x=>x._tmpId!==r._tmpId);
+      delete state.updates[r._id];
+    }else{
+      remain.push(r);
     }
-  }
-});
-  </script>
+  });
+  state.editRows = remain;
+  renderEditTable();
+}
 
-  <!-- 채팅 데모(그대로 유지) -->
-  <script>
-(() => {
-  const box  = document.getElementById('chatBox');
-  const input= document.getElementById('chatInput');
-  const btn  = document.getElementById('chatSend');
-  if (!box || !input || !btn) return;
-
-  function addMsg(text, me=true){
-    const d = document.createElement('div');
-    d.className = 'msg ' + (me ? 'me' : 'bot');
-    d.textContent = text;
-    box.appendChild(d);
-    box.scrollTop = box.scrollHeight;
-  }
-  function send(){
-    const t = (input.value || '').trim();
-    if(!t) return;
-    addMsg(t, true);
-    input.value = '';
-  }
-  input.addEventListener('keydown', (e)=>{ if(e.key==='Enter') send(); });
-  btn.addEventListener('click', send);
-})();
-  </script>
-
-  <!-- 붙여넣기 OCR 도구(그대로 유지) -->
-  <script>
-function chatAdd(text, who='bot') {
-  const box = document.getElementById('chatBox');
-  if (!box) return;
+/** =========================
+ *  OCR: 붙여넣기/파일 → OCR.space → 파싱 → 표 자동 추가
+ *  ========================= */
+function chatAdd(text, who='bot'){
+  const box = qs('chatBox');
   const d = document.createElement('div');
-  d.className = 'msg ' + (who === 'me' ? 'me' : 'bot');
+  d.className = 'msg ' + (who==='me' ? 'me' : 'bot');
   d.textContent = text;
   box.appendChild(d);
   box.scrollTop = box.scrollHeight;
 }
 function chatAddImage(url){
-  const box = document.getElementById('chatBox');
-  if (!box) return;
-  const d = document.createElement('div');
-  d.className = 'msg me';
-  const img = new Image();
-  img.src = url;
-  img.style.maxWidth = '240px';
-  img.style.borderRadius = '8px';
-  img.style.border = '1px solid #e5e7eb';
-  d.appendChild(img);
-  box.appendChild(d);
-  box.scrollTop = box.scrollHeight;
+  const box = qs('chatBox');
+  const d = document.createElement('div'); d.className='msg me';
+  const img = new Image(); img.src=url; d.appendChild(img);
+  box.appendChild(d); box.scrollTop = box.scrollHeight;
 }
-async function toPngBlob(file) {
-  if (file.type === 'image/png') return file;
+
+async function toPngBlob(file){
+  if(file.type==='image/png') return file;
   const bmp = await createImageBitmap(file);
-  const canvas = document.createElement('canvas');
-  canvas.width = bmp.width; canvas.height = bmp.height;
-  const ctx = canvas.getContext('2d');
-  ctx.drawImage(bmp, 0, 0);
-  return await new Promise(res => canvas.toBlob(b => res(b), 'image/png', 0.95));
+  const canvas = document.createElement('canvas'); canvas.width=bmp.width; canvas.height=bmp.height;
+  const ctx = canvas.getContext('2d'); ctx.drawImage(bmp,0,0);
+  return await new Promise(res => canvas.toBlob(b => res(b),'image/png',0.95));
 }
-const OCRSPACE_KEY = 'K81476248188957'; // 교체 필요
-async function ocrWithOCRSpace(origFile) {
+
+async function ocrWithOCRSpace(origFile){
   const pngBlob = await toPngBlob(origFile);
   const form = new FormData();
   form.append('apikey', OCRSPACE_KEY);
@@ -596,297 +503,92 @@ async function ocrWithOCRSpace(origFile) {
   form.append('OCREngine','2');
   form.append('file', pngBlob, 'paste.png');
 
-  const res = await fetch('https://api.ocr.space/parse/image', { method:'POST', body:form });
-  if (!res.ok) throw new Error('네트워크 오류(' + res.status + ')');
+  const res = await fetch('https://api.ocr.space/parse/image', { method:'POST', body: form });
+  if(!res.ok) throw new Error('네트워크 오류(' + res.status + ')');
   const data = await res.json();
-
-  if (data.IsErroredOnProcessing) {
+  if(data.IsErroredOnProcessing){
     const em = Array.isArray(data.ErrorMessage) ? data.ErrorMessage.join(', ') : (data.ErrorMessage || '처리 에러');
     throw new Error(em);
   }
   const text = (data?.ParsedResults?.[0]?.ParsedText || '').trim();
-  if (!text) throw new Error('빈 결과');
+  if(!text) throw new Error('빈 결과');
   return text;
 }
-window.addEventListener('paste', async (e) => {
-  const item = [...(e.clipboardData?.items || [])].find(i => i.kind === 'file' && i.type.startsWith('image/'));
-  if (!item) return;
+
+function parseOCRText(raw){
+  const text = raw.replace(/^RAW:\s*/,'');
+  const lines = text.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+  let date = '', time = '', serial='';
+
+  for(const l of lines){
+    const m = l.match(/(\d{4}\.\d{2}\.\d{2})\s+(\d{1,2}:\d{2})/);
+    if(m){ date=m[1]; time=m[2]; }
+    const srl = l.match(/No\.\s*([A-Za-z0-9\-\_]+)/i);
+    if(srl){ serial=srl[1]; }
+  }
+  return { date, time, serial };
+}
+
+function autoAddOCRRow({ date, time, serial }){
+  const uid = toUpper(qs('uidInput').value);
+  if(!uid){ chatAdd('⚠️ 고유번호를 먼저 입력하세요.', 'bot'); return; }
+  if(!date || !time || !serial){ chatAdd('⚠️ OCR에서 필드 추출 실패(날짜/시간/시리얼).', 'bot'); return; }
+
+  const tmpId = 'ocr_'+Math.random().toString(36).slice(2,8);
+  const row = {_tmpId:tmpId,_id:null,unique_id:uid,'날짜':date,'시간':time,'인증샷 시리얼넘버':serial};
+  state.editRows.push(row);
+  state.inserts.push({...row});
+  renderEditTable();
+  chatAdd(`✅ OCR 추가: ${date} ${time} / ${serial}`, 'bot');
+}
+
+const chatBox = qs('chatBox');
+const observer = new MutationObserver(()=>{ /* hook reserved */ });
+observer.observe(chatBox,{childList:true});
+
+window.addEventListener('paste', async (e)=>{
+  const item = [...(e.clipboardData?.items || [])].find(i => i.kind==='file' && i.type.startsWith('image/'));
+  if(!item) return;
   const file = item.getAsFile();
   const url = URL.createObjectURL(file);
   chatAddImage(url);
   chatAdd('이미지 접수됨. OCR 처리 중…', 'bot');
-  try {
+  try{
     const text = await ocrWithOCRSpace(file);
-    const shown = text.length > 500 ? text.slice(0, 500) + ' …' : text;
+    const shown = text.length>500 ? text.slice(0,500)+' …' : text;
     chatAdd('RAW: ' + shown, 'bot');
-  } catch (err) {
+    const p = parseOCRText(text);
+    autoAddOCRRow(p);
+  }catch(err){
     chatAdd('OCR 에러: ' + (err?.message || String(err)), 'bot');
-  } finally {
-    setTimeout(() => URL.revokeObjectURL(url), 3000);
+  }finally{
+    setTimeout(()=>URL.revokeObjectURL(url),3000);
   }
 });
-  </script>
 
-  <!-- ===== 관리(수정) 탭 스크립트: 인라인 편집/벌크 저장 ===== -->
-  <script>
-const editState = {
-  rows: [],          // 서버에서 받은 원본 행들
-  inserts: [],       // 새로 추가된 임시 행들({_tmpId, unique_id, 날짜, 시간, 인증샷 시리얼넘버})
-  updates: {},       // 수정된 필드 맵: id -> {필드:값...}
-  deletes: new Set() // 삭제 대상 _id 들
-};
-
-function E(id){ return document.getElementById(id); }
-function h(x){ return String(x ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
-function val(id){ return (E(id).value || '').trim(); }
-
-// 목록 불러오기
-async function loadEditable(){
-  const uid   = val('editUid').toUpperCase();
-  const from  = val('editFrom');
-  const to    = val('editTo');
-  const token = val('editToken');
-  if(!token){ alert('관리자 토큰을 입력하세요'); return; }
-  if(!uid){ alert('고유번호를 입력하세요'); return; }
-
-  const u = new URL(apiList);
-  u.searchParams.set('token', token);
-  u.searchParams.set('unique_id', uid);
-  if(from) u.searchParams.set('from', from);
-  if(to)   u.searchParams.set('to', to);
-
-  E('editMsg').textContent = '불러오는 중…';
+async function ocrFromFile(){
+  const inp = qs('fileInput');
+  const file = inp.files?.[0];
+  if(!file){ alert('이미지 파일을 선택하세요.'); return; }
+  const url = URL.createObjectURL(file);
+  chatAddImage(url);
+  chatAdd('파일 OCR 처리 중…', 'bot');
   try{
-    const res = await fetch(u, {mode:'cors'});
-    const j = await res.json();
-    if(!j.ok) throw new Error(j.error || '불러오기 실패');
-    editState.rows   = j.rows || [];
-    editState.inserts= [];
-    editState.updates= {};
-    editState.deletes= new Set();
-
-    renderEditTable();
-    E('editMeta').style.display='inline-block';
-    E('editMeta').textContent = `${uid} · ${editState.rows.length}건 로드됨`;
-    E('editMsg').textContent = '';
+    const text = await ocrWithOCRSpace(file);
+    chatAdd('RAW: ' + (text.length>500?text.slice(0,500)+' …':text), 'bot');
+    autoAddOCRRow(parseOCRText(text));
   }catch(e){
-    E('editMsg').textContent = `오류: ${e.message}`;
+    chatAdd('OCR 에러: ' + (e?.message||String(e)), 'bot');
+  }finally{
+    setTimeout(()=>URL.revokeObjectURL(url),3000);
   }
 }
 
-// 테이블 렌더
-function renderEditTable(){
-  const cols = [
-    { key: 'select', label: '', width: 30 },
-    { key: 'unique_id', label: '고유번호', width: 120 },
-    { key: '날짜', label: '날짜', width: 110 },
-    { key: '시간', label: '시간', width: 90 },
-    { key: '인증샷 시리얼넘버', label: '인증샷 시리얼넘버', width: 200 },
-  ];
-
-  let html = '<table><thead><tr>';
-  cols.forEach(c => {
-    html += `<th ${c.width?`style="min-width:${c.width}px"`:''}>${c.label}</th>`;
-  });
-  html += '</tr></thead><tbody>';
-
-  for(const r of editState.rows){
-    if(editState.deletes.has(r._id)) continue;
-    html += rowHtml(r, false);
-  }
-  for(const r of editState.inserts){
-    html += rowHtml(r, true);
-  }
-
-  html += '</tbody></table>';
-  E('editTableWrap').innerHTML = html;
-  bindCellHandlers();
-}
-
-function rowHtml(r, isNew){
-  const rowId = isNew ? r._tmpId : r._id;
-  const uid = r.unique_id ?? '';
-  const d   = r['날짜'] ?? '';
-  const t   = r['시간'] ?? '';
-  const srl = r['인증샷 시리얼넘버'] ?? '';
-  const trAttr = `data-rowid="${h(rowId)}" data-new="${isNew?'1':'0'}"`;
-  const cell = (key, value) => `<td contenteditable="true" data-key="${key}">${h(value)}</td>`;
-  return `<tr ${trAttr}>
-    <td style="text-align:center"><input type="checkbox" class="row-check"/></td>
-    ${cell('unique_id', uid)}
-    ${cell('날짜', d)}
-    ${cell('시간', t)}
-    ${cell('인증샷 시리얼넘버', srl)}
-  </tr>`;
-}
-
-function bindCellHandlers(){
-  const wrap = E('editTableWrap');
-  wrap.querySelectorAll('td[contenteditable="true"]').forEach(td=>{
-    td.addEventListener('input', ()=>{
-      const tr = td.closest('tr');
-      const key = td.dataset.key;
-      const rowId = tr.dataset.rowid;
-      const isNew = tr.dataset.new === '1';
-      const v = td.textContent.trim();
-
-      if(isNew){
-        const i = editState.inserts.findIndex(x=> x._tmpId===rowId);
-        if(i>=0) editState.inserts[i][key] = v;
-      }else{
-        const m = (editState.updates[rowId] ||= {});
-        m[key] = v;
-      }
-    });
-  });
-}
-
-// 행 추가/삭제
-function addRow(){
-  const uid = val('editUid').toUpperCase();
-  if(!uid){ alert('먼저 고유번호를 입력/불러오기 하세요'); return; }
-  const tmpId = 'new_' + Math.random().toString(36).slice(2, 9);
-  editState.inserts.push({
-    _tmpId: tmpId,
-    unique_id: uid,
-    '날짜': '',
-    '시간': '',
-    '인증샷 시리얼넘버': ''
-  });
-  renderEditTable();
-}
-function deleteSelected(){
-  const wrap = E('editTableWrap');
-  const checks = [...wrap.querySelectorAll('.row-check')];
-  let delCount = 0;
-
-  for(const chk of checks){
-    if(!chk.checked) continue;
-    const tr = chk.closest('tr');
-    const rowId = tr.dataset.rowid;
-    const isNew = tr.dataset.new === '1';
-    if(isNew){
-      editState.inserts = editState.inserts.filter(x=> x._tmpId !== rowId);
-    }else{
-      editState.deletes.add(rowId);
-      delete editState.updates[rowId];
-    }
-    delCount++;
-  }
-  if(delCount===0) { alert('삭제할 행을 선택하세요'); return; }
-  renderEditTable();
-}
-
-// 저장(반영)
-async function saveEdits(){
-  const token = val('editToken');
-  if(!token){ alert('관리자 토큰을 입력하세요'); return; }
-
-  const inserts = [];
-  for(const r of editState.inserts){
-    const uid = (r.unique_id||'').trim().toUpperCase();
-    const d   = (r['날짜']||'').trim();
-    const t   = (r['시간']||'').trim();
-    const srl = (r['인증샷 시리얼넘버']||'').trim();
-    if(!uid || !d || !t || !srl){
-      E('editMsg').textContent = '추가 행에 비어있는 값이 있습니다.';
-      return;
-    }
-    inserts.push({ unique_id: uid, '날짜': d, '시간': t, '인증샷 시리얼넘버': srl });
-  }
-
-  const updates = Object.entries(editState.updates).map(([id, fields])=>{
-    const out = { _id: id };
-    if('unique_id' in fields) out.unique_id = (fields.unique_id||'').trim().toUpperCase();
-    if('날짜' in fields) out['날짜'] = (fields['날짜']||'').trim();
-    if('시간' in fields) out['시간'] = (fields['시간']||'').trim();
-    if('인증샷 시리얼넘버' in fields) out['인증샷 시리얼넘버'] = (fields['인증샷 시리얼넘버']||'').trim();
-    return out;
-  });
-
-  const deletes = Array.from(editState.deletes);
-
-  const payload = { insert: inserts, update: updates, delete: deletes };
-
-  E('editMsg').textContent = '반영 중…';
-  try{
-    const u = new URL(apiBulk);
-    u.searchParams.set('token', token);
-    const res = await fetch(u, {
-      method:'POST',
-      mode:'cors',
-      headers:{ 'Content-Type':'application/json' },
-      body: JSON.stringify(payload)
-    });
-    const j = await res.json();
-    if(!res.ok || !j.ok){
-      throw new Error(j.error || `저장 실패 (HTTP ${res.status})`);
-    }
-    E('editMsg').textContent = `성공: matched ${j.matched}, modified ${j.modified}, upserts ${j.upserts}, deleted ${j.deleted}`;
-    await loadEditable();
-  }catch(e){
-    // 백엔드가 BulkWriteError 메시지를 error에 넣어주면 그대로 표시됨
-    E('editMsg').textContent = `오류: ${e.message}`;
-  }
-}
-
-    /* ==== OCR → 관리테이블 자동 채우기 ==== */
-// OCR 텍스트 파싱 함수
-function parseOCRText(raw) {
-  const lines = raw.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
-  let date = '', time = '', serial = '';
-
-  // 날짜·시간 패턴 찾기
-  for (const l of lines) {
-    const m = l.match(/(\d{4}\.\d{2}\.\d{2})\s+(\d{1,2}:\d{2})/);
-    if (m) {
-      date = m[1];
-      time = m[2];
-    }
-    const srl = l.match(/No\.\s*([A-Za-z0-9\-_]+)/);
-    if (srl) serial = srl[1];
-  }
-
-  return { date, time, serial };
-}
-
-// OCR 결과 채팅 감시 후 자동 반영
-const chatBox = document.getElementById('chatBox');
-const observer = new MutationObserver(() => {
-  const msgs = [...chatBox.querySelectorAll('.msg.bot')];
-  if (msgs.length === 0) return;
-  const last = msgs[msgs.length - 1];
-  const txt = last.textContent || '';
-  if (txt.startsWith('RAW:')) {
-    const parsed = parseOCRText(txt);
-    if (parsed.date && parsed.time && parsed.serial) {
-      // 관리 탭 테이블에 자동 추가
-      autoAddOCRRow(parsed);
-    }
-  }
+/** 초기 모드 뱃지/엔터 키 */
+document.addEventListener('DOMContentLoaded', ()=>{
+  qs('modeBadge').textContent = '관리자 모드(보안 무시)';
+  qs('uidInput').addEventListener('keydown', e=>{ if(e.key==='Enter') searchByUID(1); });
 });
-observer.observe(chatBox, { childList: true });
-
-// 관리 테이블에 OCR 행 추가
-function autoAddOCRRow({ date, time, serial }) {
-  const uid = (document.getElementById('editUid')?.value || '').trim().toUpperCase();
-  if (!uid) {
-    chatAdd('⚠️ 관리 탭에 고유번호를 먼저 입력해야 합니다.', 'bot');
-    return;
-  }
-
-  const tmpId = 'ocr_' + Math.random().toString(36).slice(2, 8);
-  editState.inserts.push({
-    _tmpId: tmpId,
-    unique_id: uid,
-    '날짜': date,
-    '시간': time,
-    '인증샷 시리얼넘버': serial
-  });
-
-  renderEditTable();
-  chatAdd(`✅ OCR 데이터 자동 추가됨: ${date} ${time} / ${serial}`, 'bot');
-}
   </script>
 </body>
 </html>
