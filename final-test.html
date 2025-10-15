@@ -1,463 +1,474 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>이벤트 데이터 조회 + Vision OCR 업로드</title>
-  <style>
-:root{--blue:#1f6feb;--border:#e5e7eb}
-*{box-sizing:border-box}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,'Open Sans','Helvetica Neue',sans-serif;margin:0;padding:16px;background:#f4f7f9;color:#333}
-.page{display:flex;gap:24px;align-items:flex-start;max-width:1200px;margin:0 auto}
-.left,.right{flex:1 1 0}
-.card{background:#fff;border-radius:12px;box-shadow:0 4px 14px rgba(0,0,0,.06);padding:16px}
-h1{margin:0 0 12px;color:#2c3e50;font-size:22px}
-h2{margin:0 0 10px;font-size:18px;color:#2c3e50}
-.row{display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:10px}
-input,select,textarea{padding:10px;font-size:14px;border:1px solid #d1d5db;border-radius:8px;background:#fff}
-.btn{padding:10px 14px;background:#3498db;color:#fff;border:0;border-radius:8px;cursor:pointer}
-.btn:disabled{opacity:.6;cursor:default}
-.btn:hover{background:#2980b9}
-.meta{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;margin-top:6px;color:#666;font-size:13px;gap:8px}
-.pill{background:#eef6ff;color:#1f6feb;border:1px solid #d0e7ff;border-radius:999px;padding:4px 10px;font-size:12px}
-.error{color:#d91e18}
-.center{text-align:center}
-.strong{font-weight:600}
-.table-wrap{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
-table{width:100%;border-collapse:collapse;margin-top:10px;font-size:14px;min-width:640px}
-th,td{border:1px solid #eee;padding:10px;text-align:left;white-space:nowrap}
-th{background:#f6f8fa}
-tr:nth-child(even){background:#fafafa}
-.ocrDrop{border:2px dashed var(--border);border-radius:10px;background:#f9fafb;padding:12px;min-height:64px;display:flex;align-items:center;gap:8px}
-.ocrDrop.k{border-color:#93c5fd;background:#eff6ff}
-.log{height:200px;overflow:auto;border:1px solid var(--border);border-radius:8px;padding:8px;background:#fcfcfd;font-family:ui-monospace, Menlo, Consolas, monospace;font-size:12px;white-space:pre-wrap}
-.preview{max-width:220px;border-radius:8px;border:1px solid var(--border)}
-.help{font-size:12px;color:#666}
-.kv{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-@media (max-width:1024px){.page{flex-direction:column}}
-  </style>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>이벤트 데이터 조회 + OCR</title>
+<style>
+  :root{--pri:#2563eb;--text:#2c3e50;--bg:#f4f7f9;--b:#e5e7eb}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:#333;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,'Open Sans','Helvetica Neue',sans-serif}
+  .page{display:flex;gap:18px;padding:14px}
+  .pane{flex:1;background:#fff;border-radius:12px;box-shadow:0 4px 14px rgba(0,0,0,.06);padding:14px}
+  h2{margin:0 0 10px;color:var(--text);font-size:18px}
+  .row{display:flex;gap:8px;align-items:center;margin-bottom:10px}
+  input,select,button,textarea{font-size:14px}
+  input,select,textarea{border:1px solid var(--b);border-radius:8px;padding:9px}
+  button{background:var(--pri);color:#fff;border:0;border-radius:8px;padding:9px 12px;cursor:pointer}
+  button.ghost{background:#eef2ff;color:#1f34a2}
+  button.light{background:#e5e7eb;color:#333}
+  .tag{background:#eef6ff;border:1px solid #cfe3ff;color:#1f6feb;border-radius:999px;padding:3px 8px;font-size:12px}
+  .table-wrap{overflow:auto;border:1px solid var(--b);border-radius:8px}
+  table{width:100%;border-collapse:collapse;min-width:720px}
+  th,td{border-bottom:1px solid #f0f2f5;padding:8px;white-space:nowrap}
+  th{background:#f6f8fa;text-align:left;font-weight:600;color:#334155}
+  tr:nth-child(even) td{background:#fafafa}
+  td input{width:100%;padding:7px;border:1px solid #e5e7eb;border-radius:6px;background:#fff}
+  .chk{text-align:center;width:36px}
+  .right{display:flex;flex-direction:column;gap:12px}
+  .ocr-box{display:flex;gap:12px}
+  .ocr-left{flex:0 0 260px;border:1px dashed var(--b);border-radius:12px;display:flex;align-items:center;justify-content:center;min-height:360px;overflow:hidden;background:#fbfbfd}
+  .ocr-left img{max-width:100%;max-height:100%}
+  .ocr-right{flex:1;display:flex;flex-direction:column;gap:8px}
+  textarea{width:100%;min-height:180px;resize:vertical}
+  .small{font-size:12px;color:#64748b}
+  .ok{color:#0a7a28}
+  .err{color:#b91c1c}
+  .pill{padding:3px 8px;border-radius:999px;background:#f1f5f9}
+  .grid2{display:grid;grid-template-columns:1fr auto auto auto;gap:8px}
+  .flex-gap{display:flex;gap:6px;align-items:center}
+</style>
 </head>
 <body>
+
 <div class="page">
-  <!-- 왼쪽: 검색/요약/상세/메시지 -->
-  <div class="left">
-    <div class="card">
-      <h1>이벤트 데이터 조회</h1>
-      <div class="row">
-        <input id="uidInput" placeholder="고유번호(unique_id) — 예: AA0001 (대문자 권장)"/>
-        <div class="kv">
-          <button class="btn" id="btnSearch">검색</button>
-          <span class="pill">페이지</span>
-          <button class="btn" id="prevBtn">◀</button>
-          <span class="pill" id="pageInfo">1</span>
-          <button class="btn" id="nextBtn">▶</button>
-          <select id="limitSel">
-            <option>50</option><option>100</option><option>200</option>
-            <option selected>500</option><option>1000</option>
-          </select>
-        </div>
-      </div>
+  <!-- LEFT: DATA TABLE -->
+  <div class="pane">
+    <h2>이벤트 데이터 조회</h2>
 
-      <div class="meta">
-        <div id="loader" style="display:none">조회 중… <span id="timer">0.0</span>s</div>
-        <div class="kv">
-          <span class="pill">사전: 2025.09.19~24</span>
-          <span class="pill">9/25 1차 ≤ 09:59</span>
-          <span class="pill">생방 ≥ 12:00</span>
-        </div>
-      </div>
-
-      <div id="uidSummary" class="table-wrap" style="margin-top:8px"></div>
-      <div id="uidEditable" class="table-wrap" style="margin-top:8px"></div>
-      <div id="uidDetails" class="table-wrap" style="margin-top:8px"></div>
-
-      <div style="margin-top:14px">
-        <h2>최종 안내 메시지</h2>
-        <div class="meta">
-          <div id="msgInfo" class="pill">—</div>
-          <div class="kv">
-            <button class="btn" id="btnMakeMsg">메시지 생성</button>
-            <button class="btn" id="btnCopyMsg">복사</button>
-          </div>
-        </div>
-        <textarea id="messageBox" rows="10" placeholder="여기에 자동 생성됩니다."></textarea>
-      </div>
+    <div class="row">
+      <input id="uidInput" placeholder="고유번호 (예: AH1018)" style="width:220px"/>
+      <button id="btnLoad">불러오기</button>
+      <span class="tag" id="countTag" style="display:none"></span>
+      <span class="small" id="loadInfo"></span>
     </div>
+
+    <div class="row">
+      <div class="flex-gap">
+        <button class="ghost" id="btnAddRow">행 추가</button>
+        <button class="light" id="btnDeleteSel">선택 삭제</button>
+        <button id="btnApply">DB 반영</button>
+      </div>
+      <span class="small">※ 표에서 값 직접 수정 가능(UID/날짜/시간/시리얼). ‘DB 반영’ 눌러야 저장됩니다.</span>
+    </div>
+
+    <div class="table-wrap">
+      <table id="tbl">
+        <thead>
+          <tr>
+            <th class="chk"><input type="checkbox" id="chkAll"/></th>
+            <th>고유번호</th>
+            <th>날짜(YYYY.MM.DD)</th>
+            <th>시간(HH:MM)</th>
+            <th>인증샷 시리얼넘버</th>
+          </tr>
+        </thead>
+        <tbody id="tbody">
+          <!-- rows -->
+        </tbody>
+      </table>
+    </div>
+
+    <div class="row" style="margin-top:10px">
+      <button class="light" id="btnMakeMsg">메시지 생성</button>
+      <button class="ghost" id="btnCopyMsg">복사</button>
+      <span class="small" id="msgInfo"></span>
+    </div>
+    <textarea id="messageBox" placeholder="‘메시지 생성’ 누르면 자동으로 채워집니다."></textarea>
   </div>
 
-  <!-- 오른쪽: Vision OCR → 파싱 → DB 업데이트 -->
-  <div class="right">
-    <div class="card">
-      <h2>인증서 OCR 업로드 (붙여넣기)</h2>
-      <div class="help">클립보드 이미지를 <b>붙여넣기(Ctrl/Cmd+V)</b> 하세요. (파일 선택 X)</div>
+  <!-- RIGHT: OCR -->
+  <div class="pane right">
+    <h2>인증서 OCR 업로드 (붙여넣기)</h2>
 
-      <div id="drop" class="ocrDrop" title="여기에 붙여넣기">
-        <img id="preview" class="preview" alt=""/>
-        <div>
-          <div class="help" id="ocrHint">대기 중…</div>
-          <div class="kv" style="margin-top:6px">
-            <span class="pill">OCR: Google Vision</span>
-            <span class="pill">DOCUMENT_TEXT_DETECTION</span>
-            <span class="pill">ko / en</span>
-          </div>
+    <div class="ocr-box">
+      <div class="ocr-left" id="ocrPreview"><span class="small">여기에 캡처 이미지를 붙여넣기(Ctrl+V)</span></div>
+      <div class="ocr-right">
+        <div class="grid2">
+          <div class="small">엔진: <span class="pill">Google Vision (DOCUMENT_TEXT_DETECTION)</span></div>
+          <button class="ghost" id="btnPickLang">ko / en</button>
+          <button class="light" id="btnClearOcr">지우기</button>
+          <button id="btnPushToTable">왼쪽 표로 추가</button>
         </div>
-      </div>
+        <textarea id="ocrLog" placeholder="OCR 원문과 파싱 로그가 여기에 표시됩니다."></textarea>
 
-      <div style="margin-top:10px" class="kv">
-        <button class="btn" id="btnApply" disabled>DB 반영(업로드)</button>
-        <span id="applyInfo" class="pill" style="display:none"></span>
-      </div>
-
-      <div style="margin-top:10px">
-        <h3 style="margin:0 0 6px">OCR 원문 / 파싱 로그</h3>
-        <div id="log" class="log"></div>
+        <div class="row" style="margin:0">
+          <div class="flex-gap">
+            <span class="small">파싱값</span>
+            <span class="tag" id="p_date">date: -</span>
+            <span class="tag" id="p_time">time: -</span>
+            <span class="tag" id="p_serial">serial: -</span>
+          </div>
+          <span class="small" id="ocrInfo"></span>
+        </div>
       </div>
     </div>
   </div>
 </div>
 
 <script>
-/* =============== 설정 (이 3가지만 바꾸세요) =============== */
-const BASE_URL     = 'https://my-search-backend.onrender.com'; // 백엔드
-const ADMIN_TOKEN  = 'PASTE_ADMIN_TOKEN_HERE';                  // 관리자 토큰(프런트 하드코딩)
-const VISION_API_KEY = 'AIzaSyCVDnT8-FoaSFG3VJKRsz0O_g8XNpJWS-w'; // Google Vision API Key
-/* ========================================================= */
+/* ========= 하드코딩 설정(요청대로) ========= */
+const BASE_URL     = 'https://my-search-backend.onrender.com';
+const API_SEARCH   = BASE_URL + '/admin/records';        // _id 포함 조회
+const API_BULK     = BASE_URL + '/admin/records/bulk';    // 삽입/수정/삭제
+const ADMIN_TOKEN  = 'REPLACE_ME_HXL_OR_ADMIN_TOKEN';     // <- 관리자 고유키 여기에 박음
 
-/* ===== 내부 상수/엔드포인트 ===== */
-const apiSearch = `${BASE_URL}/search`;
-const apiBulk   = `${BASE_URL}/admin/records/bulk`;
+/* Google Vision */
+const VISION_API_KEY = 'AIzaSyCVDnT8-FoaSFG3VJKRsz0O_g8XNpJWS-w';
 const VISION_ENDPOINT = 'https://vision.googleapis.com/v1/images:annotate?key=' + encodeURIComponent((VISION_API_KEY||'').trim());
+let VISION_LANG = ['ko','en'];
 
-/* ===== 상태 ===== */
-let timerInterval;
+/* ========= 상태 ========= */
+const $ = (id)=>document.getElementById(id);
 const state = {
-  page:1, limit:500,
-  lastPageRows:[], lastAllRows:[],
-  lastSummary:null,
-  ocr:{ text:'', parsedRows:[], imageURL:null }
+  rows: [],        // 현재 테이블 rows (객체 형태)
+  baseById: {},    // _id -> 원본(변경 감지)
+  uid: '',         // 현재 UID
+  ocr: {text:'', date:null, time:null, serial:null, imgUrl:null}
 };
 
-/* ===== 유틸 ===== */
-const qs = id => document.getElementById(id);
-const escapeHtml = s => String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;");
-function startTimer(){let s=Date.now();qs('timer').textContent='0.0';qs('loader').style.display='block';timerInterval=setInterval(()=>{qs('timer').textContent=((Date.now()-s)/1000).toFixed(1)},100)}
-function stopTimer(){clearInterval(timerInterval);qs('loader').style.display='none'}
-function getDateRange(a,b){const to=(s)=>{const [Y,M,D]=s.split('.').map(Number);return new Date(Y,M-1,D)};const fmt=(d)=>`${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;const res=[];let cur=to(a),end=to(b);while(cur<=end){res.push(fmt(cur));cur.setDate(cur.getDate()+1)}return res}
-const toMD = s => {const [_,m,d]=s.split('.');return `${Number(m)}/${Number(d)}`;}
-function timeToMinutes(t){if(!t)return null;const s=String(t).trim();const am=s.match(/오전|오후|AM|PM/i);const cleaned=s.replace(/\s+/g,'');const m=cleaned.match(/(\d{1,2})[:시](\d{2})/);if(!m)return null;let h=parseInt(m[1],10),mm=parseInt(m[2],10);if(am){if(/pm|오후/i.test(am[0])&&h<12)h+=12; if(/am|오전/i.test(am[0])&&h===12)h=0;} if(h<0||h>23||mm<0||mm>59)return null;return h*60+mm}
-
-/* ===== 검색 ===== */
-async function fetchRows(uid, page, limit){
-  const u=new URL(apiSearch);
-  u.searchParams.set('unique_id', uid);
-  u.searchParams.set('page', page);
-  u.searchParams.set('limit', Math.max(1, Math.min(limit, 1000)));
-  const res=await fetch(u,{mode:'cors'});
-  if(!res.ok) throw new Error('서버 오류');
-  return await res.json();
+/* ========= 도우미 ========= */
+function esc(s){ return String(s==null?'':s); }
+function pad2(n){ return String(n).padStart(2,'0'); }
+function isYmd(s){ return /^\d{4}\.(0[1-9]|1[0-2])\.(0[1-9]|[12]\d|3[01])$/.test(s||''); }
+function isHm(s){ return /^([01]\d|2[0-3]):[0-5]\d$/.test(s||''); }
+function renderCountTag(){
+  if(!state.rows.length){ $('countTag').style.display='none'; return; }
+  $('countTag').style.display='inline-block';
+  $('countTag').textContent = `${state.uid} · ${state.rows.length}건`;
 }
-async function doSearch(page=null){
-  const idRaw=(qs('uidInput').value||'').trim();
-  if(!idRaw){alert('고유번호를 입력하세요.');return;}
-  const uid=idRaw.toUpperCase();
-  state.page=page ?? state.page;
-  state.limit=Number(qs('limitSel').value||500);
-  qs('pageInfo').textContent=String(state.page);
-  try{
-    startTimer();
-    const [pageRows, allRows]=await Promise.all([fetchRows(uid, state.page, state.limit), fetchRows(uid, 1, 1000)]);
-    stopTimer();
-    state.lastPageRows=pageRows; state.lastAllRows=allRows;
-    renderAll();
-    // 채팅 영역 같은 외부 스크립트가 듣고 있으면 알림
-    window.dispatchEvent(new CustomEvent('uidSearched', { detail: { uid } }));
-  }catch(e){
-    stopTimer();
-    qs('uidSummary').innerHTML=`<p class="error">오류: ${escapeHtml(e.message)}</p>`;
-    qs('uidEditable').innerHTML=''; qs('uidDetails').innerHTML='';
+
+/* ========= 테이블 렌더 ========= */
+function renderTable(){
+  const tb = $('tbody'); tb.innerHTML='';
+  for(const row of state.rows){
+    const tr = document.createElement('tr');
+    tr.dataset.id = row._id || '';
+
+    const tdChk = document.createElement('td'); tdChk.className='chk';
+    const ck = document.createElement('input'); ck.type='checkbox'; ck.className='rowchk';
+    tdChk.appendChild(ck);
+
+    function mkCell(key, width){
+      const td = document.createElement('td');
+      const ip = document.createElement('input');
+      ip.value = esc(row[key]||'');
+      ip.oninput = e => row[key] = e.target.value;
+      if(width) ip.style.width = width;
+      td.appendChild(ip);
+      return td;
+    }
+
+    tr.appendChild(tdChk);
+    tr.appendChild(mkCell('unique_id','140px'));
+    tr.appendChild(mkCell('날짜','130px'));
+    tr.appendChild(mkCell('시간','100px'));
+    tr.appendChild(mkCell('인증샷 시리얼넘버','320px'));
+
+    tb.appendChild(tr);
   }
+  renderCountTag();
 }
 
-/* ===== 렌더 ===== */
-function renderAll(){
-  const pageRows=state.lastPageRows||[];
-  const allRows=state.lastAllRows||[];
-  const rowsForSummary=allRows.length?allRows:pageRows;
+/* ========= 로드 ========= */
+async function loadUID(){
+  const raw = ($('uidInput').value||'').trim(); if(!raw){ alert('고유번호를 입력하세요.'); return; }
+  const uid = raw.toUpperCase(); state.uid = uid;
+  $('loadInfo').textContent = '로딩 중…';
 
-  // 카운트
-  const df='2025.09.19', dt='2025.09.25', days=getDateRange(df,dt), day25='2025.09.25';
-  const counts=Object.fromEntries(days.map(d=>[d,0])); let c25=0, live=0;
-  rowsForSummary.forEach(r=>{
-    const d=String(r['날짜']||'').trim(), t=String(r['시간']||'').trim();
-    if(!d || !(d in counts)) return;
-    if(d===day25){const m=timeToMinutes(t); if(m!==null){ if(m<=9*60+59)c25++; else if(m>=12*60)live++; }}
-    else counts[d]++
+  const url = new URL(API_SEARCH);
+  url.searchParams.set('unique_id', uid);
+  const res = await fetch(url.toString(), {
+    headers: {'X-Admin-Token': ADMIN_TOKEN}
   });
+  const j = await res.json();
+  if(!j.ok){ $('loadInfo').textContent = '오류'; alert(j.error||'조회 실패'); return; }
 
-  // 요약
-  const hdr=[],keys=[];
-  days.forEach(d=>{ if(d===day25){hdr.push('9/25(1차)');keys.push(d+'_f'); hdr.push('생방');keys.push(d+'_l');} else {hdr.push(toMD(d));keys.push(d);} });
-  const cells=keys.map(k=>k.endsWith('_f')?c25:k.endsWith('_l')?live:(counts[k]||0));
-  let perfect=true; for(const d of days){ if(d===day25)continue; if((counts[d]||0)<1){perfect=false;break;} } if(c25<1)perfect=false;
-
-  let summary='<table><thead><tr><th style="min-width:140px">참여 요약(원본)</th>';
-  hdr.forEach(x=>summary+=`<th>${x}</th>`); summary+='</tr></thead><tbody>';
-  summary+=`<tr><td>건수</td>${cells.map(c=>`<td class="center">${c}</td>`).join('')}</tr>`;
-  summary+=`<tr><td>개근(원본)</td><td colspan="${hdr.length}" class="center strong">${perfect?'o':'x'}</td></tr>`;
-  summary+='</tbody></table>';
-  qs('uidSummary').innerHTML=summary;
-
-  // 수정 패널(자동 계산 표시)
-  const v={'2025.09.19':counts['2025.09.19']||0,'2025.09.20':counts['2025.09.20']||0,'2025.09.21':counts['2025.09.21']||0,'2025.09.22':counts['2025.09.22']||0,'2025.09.23':counts['2025.09.23']||0,'2025.09.24':counts['2025.09.24']||0,'25_first':c25,'live':live};
-  state.lastSummary=v;
-  const k=v['2025.09.19']+v['2025.09.20']+v['2025.09.21']+v['2025.09.22']+v['2025.09.23']+v['2025.09.24']+v['25_first'];
-  const n=v['live']; const weight=perfect?n*8:n;
-  qs('uidEditable').innerHTML=`<div class="meta"><div class="pill">사전 합계: ${k}건 · 생방: ${n}건 · 개근: ${perfect?'o':'x'} · 가중치: ${weight}</div><div class="help">* OCR 업로드 후 자동 갱신</div></div>`;
-
-  // 상세
-  let detail='<table><thead><tr><th>고유번호</th><th>날짜</th><th>시간</th><th>인증샷 시리얼넘버</th></tr></thead><tbody>';
-  pageRows.forEach(r=>{
-    const s=r['인증샷 시리얼넘버'] ?? r['인증샷시리얼넘버'] ?? '';
-    detail+=`<tr><td>${escapeHtml(r.unique_id||'')}</td><td>${escapeHtml(String(r['날짜']||'').trim())}</td><td>${escapeHtml(String(r['시간']||'').trim())}</td><td>${escapeHtml(s)}</td></tr>`;
-  });
-  detail+='</tbody></table>'; qs('uidDetails').innerHTML=detail;
-
-  qs('msgInfo').textContent=`사전:${k} · 생방:${n} · 개근:${perfect?'o':'x'} · 가중치:${weight}`;
+  // rows: [{_id, unique_id, 날짜, 시간, 인증샷 시리얼넘버}]
+  state.rows = j.rows.map(r=>({ ...r }));
+  state.baseById = {};
+  for(const r of j.rows){ if(r._id) state.baseById[r._id]=JSON.parse(JSON.stringify(r)); }
+  renderTable();
+  $('loadInfo').textContent = '완료';
+  dispatchUIDSearched(uid);
 }
 
-/* ===== 메시지 ===== */
-function generateMessage(){
-  const uid=(qs('uidInput').value||'').trim().toUpperCase() || '고유번호';
-  const v=state.lastSummary || {'2025.09.19':0,'2025.09.20':0,'2025.09.21':0,'2025.09.22':0,'2025.09.23':0,'2025.09.24':0,'25_first':0,'live':0};
-  const a=v['2025.09.19'],b=v['2025.09.20'],c=v['2025.09.21'],d=v['2025.09.22'],e=v['2025.09.23'],f=v['2025.09.24'],g=v['25_first'],n=v['live'];
-  const k=a+b+c+d+e+f+g; const perfect=[a,b,c,d,e,f].every(x=>x>=1)&&g>=1; const weight=perfect?n*8:n;
-  const msg=
+/* ========= 행 추가/삭제 ========= */
+function addRow(prefill={}){
+  const row = {
+    _id: null,
+    unique_id: prefill.unique_id || state.uid || '',
+    날짜: prefill.날짜 || '',
+    시간: prefill.시간 || '',
+    '인증샷 시리얼넘버': prefill['인증샷 시리얼넘버'] || ''
+  };
+  state.rows.push(row);
+  renderTable();
+}
+function deleteSelectedLocally(){
+  const ids = [];
+  document.querySelectorAll('.rowchk:checked').forEach(ck=>{
+    const tr = ck.closest('tr'); const id=tr?.dataset?.id||'';
+    const idx = Array.from($('tbody').children).indexOf(tr);
+    if(idx>=0){ state.rows.splice(idx,1); if(id) ids.push(id); }
+  });
+  renderTable();
+  if(ids.length) $('loadInfo').textContent = `삭제표시 ${ids.length}건 (DB 반영시 실제 삭제)`;
+}
+
+/* ========= DB 반영 ========= */
+async function applyChanges(){
+  if(!state.uid){ alert('먼저 고유번호를 불러오세요.'); return; }
+
+  const inserts=[], updates=[], deletes=[];
+  // 선택 삭제된 것만 삭제? → 이미 로컬에서 지운 행 중 _id가 base에 남아있으면 삭제 대상.
+  const currentIds = new Set(state.rows.map(r=>r._id).filter(Boolean));
+  for(const _id of Object.keys(state.baseById)){
+    if(!currentIds.has(_id)) deletes.push(_id);
+  }
+
+  for(const r of state.rows){
+    // 정합성(최소 필수)
+    const uid=(r.unique_id||'').trim().toUpperCase();
+    const d=(r['날짜']||'').trim();
+    const t=(r['시간']||'').trim();
+    const s=(r['인증샷 시리얼넘버']||'').trim();
+    if(!uid || !d || !t || !s){ continue; }
+
+    if(!r._id){ // 새로 추가
+      inserts.push({unique_id:uid,'날짜':d,'시간':t,'인증샷 시리얼넘버':s});
+    }else{
+      const base = state.baseById[r._id]||{};
+      const payload = {};
+      if(uid !== (base.unique_id||'')) payload.unique_id = uid;
+      if(d   !== (base['날짜']||''))   payload['날짜'] = d;
+      if(t   !== (base['시간']||''))   payload['시간'] = t;
+      if(s   !== (base['인증샷 시리얼넘버']||'')) payload['인증샷 시리얼넘버']=s;
+      if(Object.keys(payload).length){
+        updates.push({_id:r._id, ...payload});
+      }
+    }
+  }
+
+  if(!inserts.length && !updates.length && !deletes.length){
+    alert('변경 사항이 없습니다.'); return;
+  }
+
+  $('loadInfo').textContent = 'DB 반영 중…';
+  const res = await fetch(API_BULK, {
+    method:'POST',
+    headers:{'Content-Type':'application/json','X-Admin-Token':ADMIN_TOKEN},
+    body: JSON.stringify({ insert: inserts, update: updates, delete: deletes })
+  });
+  const j = await res.json();
+  if(!j.ok){ $('loadInfo').textContent='오류'; alert(j.error||'반영 실패'); return; }
+
+  $('loadInfo').textContent = `반영됨: upsert ${j.upserts}, update ${j.modified}, delete ${j.deleted}`;
+  // 최신 상태 다시 로드
+  loadUID().catch(()=>{});
+}
+
+/* ========= 메시지 생성 ========= */
+function computeSummary(){
+  const want = new Set(['2025.09.19','2025.09.20','2025.09.21','2025.09.22','2025.09.23','2025.09.24','2025.09.25']);
+  const rows = state.rows.filter(r=>want.has((r['날짜']||'').trim()));
+  let cnt = {'2025.09.19':0,'2025.09.20':0,'2025.09.21':0,'2025.09.22':0,'2025.09.23':0,'2025.09.24':0};
+  let first25=0, live=0;
+  for(const r of rows){
+    const d=(r['날짜']||'').trim();
+    const t=(r['시간']||'').trim();
+    if(d==='2025.09.25'){
+      const m = hmToMin(t);
+      if(m!=null){
+        if(m<=599) first25++; else if(m>=720) live++;
+      }
+    }else if(cnt.hasOwnProperty(d)){ cnt[d]++; }
+  }
+  const preTotal = Object.values(cnt).reduce((a,b)=>a+b,0) + first25;
+  const perfect = Object.values(cnt).every(v=>v>0) && first25>0;
+  return { ...cnt, first25, live, preTotal, perfect };
+}
+function hmToMin(s){
+  const m = (s||'').match(/^(\d{1,2}):(\d{2})$/); if(!m) return null;
+  const h=+m[1], mm=+m[2]; if(h>23||mm>59) return null; return h*60+mm;
+}
+function makeMessage(){
+  const uid = state.uid || '고유번호';
+  const S = computeSummary();
+  const w = S.perfect ? (S.live*8) : S.live;
+  const msg =
 `📢 ${uid} 님, 최종 집계 안내입니다.
 
 ✔전체 투표 참여내역
 (09.19 - 09.25)
-19일 - ${a}건 
-20일 - ${b}건 
-21일 - ${c}건 
-22일 - ${d}건 
-23일 - ${e}건 
-24일 - ${f}건 
-25일 사전투표 - ${g}건 
-25일 생방투표 - ${n}건
+19일 - ${S['2025.09.19']}건
+20일 - ${S['2025.09.20']}건
+21일 - ${S['2025.09.21']}건
+22일 - ${S['2025.09.22']}건
+23일 - ${S['2025.09.23']}건
+24일 - ${S['2025.09.24']}건
+25일 사전투표 - ${S.first25}건
+25일 생방투표 - ${S.live}건
 
-🍀 사전 투표기간 총 누적투표수 : ${k}건 
+🍀 사전 투표기간 총 누적투표수 : ${S.preTotal}건
 (생방 투표는 누적투표수에 포함되지 않습니다.)
 
-${uid} 님은 ${perfect?'개근에 해당됩니다.':'개근에 해당되지 않습니다.'}
+${uid} 님은 ${S.perfect ? '개근에 해당됩니다.' : '개근에 해당되지 않습니다.'}
 개근은 19일 투표부터 25일 오전 투표까지 모두 해주신 분들만 해당됩니다.
 
-25일 생방 투표 참여내역은 ${n}건입니다.
-개근 여부에 따른 생방 이벤트 총 가중치는 ${perfect?`${n}→ 8×${n} = ${weight}`:`${weight}`} 입니다.
+25일 생방 투표 참여내역은 ${S.live}건입니다.
+개근 여부에 따른 생방 이벤트 총 가중치는 ${S.perfect ? `${S.live} → 8×${S.live} = ${w}` : `${w}`} 입니다.
 
 씬롱이에게 투표해주셔서 감사드립니다😺
 원활한 검수를 위해 답장은 보내지 말아주세요🙏
 
 누락 및 정정 문의는 이곳이 아닌 문의 채널 "허씬롱 갤러리 Q&A"로 부탁드립니다.
 반드시 문의 전 문의 채널 하단의 양식을 참고해서 문의해주세요🙏
-문의 채널 링크 📍 
-http://pf.kakao.com/_cFxexcn `;
-  qs('messageBox').value=msg;
+문의 채널 링크 📍
+http://pf.kakao.com/_cFxexcn`;
+  $('messageBox').value = msg;
+  $('msgInfo').textContent = '생성 완료';
 }
-function copyMessage(){const ta=qs('messageBox');ta.select();ta.setSelectionRange(0,999999);document.execCommand('copy');const p=qs('msgInfo').textContent;qs('msgInfo').textContent='메시지를 클립보드에 복사했습니다.';setTimeout(()=>qs('msgInfo').textContent=p,1500)}
+function copyMsg(){
+  const ta=$('messageBox'); ta.focus(); ta.select();
+  document.execCommand('copy');
+  $('msgInfo').textContent='복사됨';
+  setTimeout(()=>$('msgInfo').textContent='',1200);
+}
 
-/* ===== Vision OCR ===== */
+/* ========= OCR: Google Vision ========= */
 async function blobToBase64(blob){
-  const arr=new Uint8Array(await blob.arrayBuffer()); let bin=''; const CHUNK=0x8000;
-  for(let i=0;i<arr.length;i+=CHUNK){bin+=String.fromCharCode.apply(null, arr.subarray(i,i+CHUNK));}
+  const arr = new Uint8Array(await blob.arrayBuffer());
+  let bin=''; const CHUNK=0x8000;
+  for(let i=0;i<arr.length;i+=CHUNK){ bin+=String.fromCharCode.apply(null, arr.subarray(i,i+CHUNK)); }
   return btoa(bin);
 }
 async function visionOCRFromBlob(blob){
-  const content=await blobToBase64(blob);
-  const body={requests:[{image:{content},features:[{type:'DOCUMENT_TEXT_DETECTION'}],imageContext:{languageHints:['en','ko']}}]};
-  let resp, raw='', json=null;
-  try{resp=await fetch(VISION_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});}catch(netErr){throw new Error(`네트워크 실패: ${String(netErr)}`);}
-  try{raw=await resp.text(); json=raw?JSON.parse(raw):null;}catch{json=null;}
-  if(!resp.ok){
-    const gErr=json?.error, code=gErr?.code, status=gErr?.status, msg=gErr?.message||raw||`HTTP ${resp.status}`;
-    throw new Error(`HTTP ${resp.status}${code?` / code ${code}`:''}${status?` (${status})`:''}\n${msg}`);
-  }
+  const content = await blobToBase64(blob);
+  const body = { requests: [{ image:{ content }, features:[{type:'DOCUMENT_TEXT_DETECTION'}], imageContext:{ languageHints: VISION_LANG } }] };
+  const resp = await fetch(VISION_ENDPOINT, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  const raw = await resp.text(); let json=null; try{ json=JSON.parse(raw) }catch{}
+  if(!resp.ok){ const ge=json?.error; throw new Error((ge?.message)||raw||`HTTP ${resp.status}`); }
   return json?.responses?.[0]?.fullTextAnnotation?.text
       || json?.responses?.[0]?.textAnnotations?.[0]?.description
       || '';
 }
 
-/* ===== 시간 추출(콜론 기준 2글자) – 사용자의 커스텀 로직 반영 ===== */
+/* 추출기: 날짜 / 시간(콜론 앞뒤 2글자) / 시리얼(No. M-… or M-…) */
 function extractTimesColon2(text){
-  const out=new Set(), s=String(text||'');
+  const out=new Set(); const s=String(text||'');
   for(let i=0;i<s.length;i++){
     if(s[i]!==':') continue;
-    const preMatch=s.slice(Math.max(0,i-2), i).match(/\d{1,2}$/);
-    const post=s.slice(i+1, i+3);
+    const preMatch = s.slice(Math.max(0,i-2), i).match(/\d{1,2}$/);
+    const post = s.slice(i+1, i+3);
     if(!preMatch) continue;
-    const pre=preMatch[0];
     if(!/^\d{2}$/.test(post)) continue;
-    let hh=parseInt(pre,10), mm=parseInt(post,10);
-    if(hh>=0 && hh<=23 && mm>=0 && mm<=59) out.add(`${String(hh).padStart(2,'0')}:${post}`);
+    const hh = parseInt(preMatch[0],10), mm = parseInt(post,10);
+    if(hh>=0&&hh<=23 && mm>=0&&mm<=59) out.add(`${pad2(hh)}:${post}`);
   }
   return [...out];
 }
-
-/* ===== 라인 기반 파서 (DB 업로드용) =====
-   한 줄에 날짜/시간/시리얼이 함께 있는 라인만 rows로 만듦.
-*/
-function parseOCRTextToRows(allText){
+function parseOCRText(allText){
   const text=String(allText||'');
-  const lines=text.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
-
-  // 날짜: 2025.09.19 / 2025-09-19 / 2025/09/19
-  const dateRe=/20\d{2}[.\-\/](0[1-9]|1[0-2])[.\-\/](0[1-9]|[12]\d|3[01])/;
-  // 시간: 콜론2글자 규칙과 호환(오전/오후/AM/PM 허용)
-  const timeRe=/((?:오전|오후|AM|PM)\s*)?(\d{1,2})[:시](\d{2})/i;
-  // 시리얼: 공백없는 6~32자(영숫자/하이픈/밑줄), 또는 'No. M-...'
-  const serialRe=/No\.\s*(M-[^\s]{1,30})|([A-Z0-9][A-Z0-9\-_]{5,32})/i;
-
-  const rows=[];
-  for(const ln of lines){
-    const dM=ln.match(dateRe);
-    const tM=ln.match(timeRe);
-    const sM=ln.match(serialRe);
-    if(!dM || !tM || !sM) continue;
-
-    // 날짜 정규화 → YYYY.MM.DD
-    const rawDate=dM[0].replaceAll('-', '.').replaceAll('/', '.');
-    const [Y,M,D]=rawDate.split('.').map(x=>x.padStart(2,'0'));
-    const date=[Y,M,D].join('.');
-
-    // 시간 정규화
-    let h=parseInt(tM[2],10), mm=tM[3], ampm=(tM[1]||'').toLowerCase();
-    if(/pm|오후/.test(ampm) && h<12) h+=12;
-    if(/am|오전/.test(ampm) && h===12) h=0;
-    const time=`${String(h).padStart(2,'0')}:${mm}`;
-
-    // 시리얼
-    const serial = (sM[1] || sM[2] || '').toUpperCase();
-
-    rows.push({'날짜':date,'시간':time,'인증샷 시리얼넘버':serial});
-  }
-
-  // 중복 제거(날짜+시간+시리얼)
-  const seen=new Set(), uniq=[];
-  for(const r of rows){
-    const key=`${r['날짜']}|${r['시간']}|${r['인증샷 시리얼넘버']}`;
-    if(seen.has(key)) continue; seen.add(key); uniq.push(r);
-  }
-  return uniq;
-}
-
-/* ===== 보조: 원본 후보(리스트) 로깅 ===== */
-function extractRawCandidates(text){
-  const s=String(text||'');
-  const dateLooseRe=/\b20\d{2}\.(?:0?[1-9]|1[0-2])\.(?:0?[1-9]|[12]\d|3[01])\b/g;
-  const timeLooseRe=/(?<!\d)(\d{1,2}):(\d{1,2})(?!\d)/g;
-  const serialLooseRe=/No\.\s*(M-[^\s]{1,30})|([A-Z0-9][A-Z0-9\-_]{5,32})/g;
+  const dateRe=/\b20\d{2}\.(0[1-9]|1[0-2])\.(0[1-9]|[12]\d|3[01])\b/g;
+  const serialRe=/No\.\s*(M-[A-Za-z0-9\-_]+)|\b(M-[A-Za-z0-9\-_]+)\b/g;
   const uniq=a=>[...new Set(a)];
-  const dates=uniq([...s.matchAll(dateLooseRe)].map(m=>m[0]));
-  const times=uniq(extractTimesColon2(s));
-  const serials=uniq([...s.matchAll(serialLooseRe)].map(m=>m[1]||m[2]).filter(Boolean));
-  return {dates,times,serials};
+  const dates = uniq([...text.matchAll(dateRe)].map(m=>m[0]));
+  const times = extractTimesColon2(text);
+  const ser   = uniq([...text.matchAll(serialRe)].map(m=>m[1]||m[2]).filter(Boolean));
+  return {dates, times, serials:ser};
+}
+function setParsedBadges(p){
+  $('p_date').textContent = 'date: ' + (p.dates[0]||'-');
+  $('p_time').textContent = 'time: ' + (p.times[0]||'-');
+  $('p_serial').textContent= 'serial: ' + (p.serials[0]||'-');
 }
 
-/* ===== DB 반영 ===== */
-async function applyToDB(uid, parsedRows){
-  if(!uid) throw new Error('고유번호가 없습니다.');
-  if(!parsedRows.length) throw new Error('업로드할 행이 없습니다.');
-  const inserts=parsedRows.map(r=>({unique_id:uid,'날짜':r['날짜'],'시간':r['시간'],'인증샷 시리얼넘버':r['인증샷 시리얼넘버']}));
-  const body=JSON.stringify({insert:inserts,update:[],delete:[]});
-  const res=await fetch(apiBulk+'?token='+encodeURIComponent(ADMIN_TOKEN),{
-    method:'POST',headers:{'Content-Type':'application/json','X-Admin-Token':ADMIN_TOKEN},body
-  });
-  if(!res.ok){const t=await res.text().catch(()=> ''); throw new Error('업로드 실패: HTTP '+res.status+' '+t);}
-  return await res.json();
-}
-
-/* ===== 이벤트 바인딩 ===== */
-qs('btnSearch').addEventListener('click', ()=>doSearch(1));
-qs('prevBtn').addEventListener('click', ()=>{ if(state.page>1) doSearch(state.page-1); });
-qs('nextBtn').addEventListener('click', ()=>{ doSearch(state.page+1); });
-qs('limitSel').addEventListener('change', ()=>{ state.page=1; doSearch(1); });
-qs('uidInput').addEventListener('keydown', e=>{ if(e.key==='Enter') doSearch(1); });
-qs('btnMakeMsg').addEventListener('click', generateMessage);
-qs('btnCopyMsg').addEventListener('click', copyMessage);
-
-qs('btnApply').addEventListener('click', async ()=>{
-  const uid=(qs('uidInput').value||'').trim().toUpperCase();
-  if(!uid){alert('좌측 상단에 고유번호를 먼저 입력하세요.');return;}
-  if(!state.ocr.parsedRows.length){alert('업로드할 행이 없습니다. 먼저 이미지를 붙여넣어 OCR을 수행하세요.');return;}
-  qs('btnApply').disabled=true; qs('applyInfo').style.display='inline-block'; qs('applyInfo').textContent='업로드 중…';
-  try{
-    const r=await applyToDB(uid, state.ocr.parsedRows);
-    qs('applyInfo').textContent=`반영 OK · upserts:${r.upserts} modified:${r.modified} matched:${r.matched} deleted:${r.deleted}`;
-    await doSearch(1);
-    generateMessage();
-  }catch(e){
-    qs('applyInfo').textContent='오류: '+(e?.message||String(e)); qs('applyInfo').classList.add('error');
-  }finally{ qs('btnApply').disabled=false; }
-});
-
-/* ===== 붙여넣기 핸들러 ===== */
-window.addEventListener('paste', async (e)=>{
-  const cd=e.clipboardData||window.clipboardData;
-  const items=cd?.items?Array.from(cd.items):[]; const files=cd?.files?Array.from(cd.files):[];
+/* 붙여넣기 핸들러 */
+document.addEventListener('paste', async (e)=>{
+  // 이미지 찾기
+  const cd = e.clipboardData || window.clipboardData;
   let file=null;
-  for(const it of items){ if(it.type?.startsWith('image/')){ file=it.getAsFile?.(); if(file)break; } }
-  if(!file){ for(const f of files){ if(f?.type?.startsWith?.('image/')){file=f;break;} } }
-  if(!file) return;  // 텍스트 붙여넣기는 무시
+  if(cd?.items){ for(const it of cd.items){ if(it.type?.startsWith('image/')){ file = it.getAsFile?.(); break; } } }
+  if(!file && cd?.files?.length){ const f=cd.files[0]; if(f.type?.startsWith('image/')) file=f; }
+  if(!file) return;
 
   e.preventDefault();
-  // 프리뷰
-  const url=URL.createObjectURL(file);
-  qs('preview').src=url; qs('ocrHint').textContent='Vision OCR 처리 중…'; qs('drop').classList.add('k');
-  state.ocr.text=''; state.ocr.parsedRows=[]; qs('log').textContent='';
+  // 미리보기
+  const url = URL.createObjectURL(file); state.ocr.imgUrl=url;
+  $('ocrPreview').innerHTML = `<img src="${url}">`;
+  $('ocrInfo').textContent = 'OCR 처리 중…';
 
   try{
-    const fullText=await visionOCRFromBlob(file);
-    state.ocr.text=fullText;
-    // 원본 후보 로그
-    const raw=extractRawCandidates(fullText);
-    const rawText=`【원본 추출값】
-날짜: ${raw.dates.join(', ')||'-'}
-시간: ${raw.times.join(', ')||'-'}
-시리얼: ${raw.serials.join(', ')||'-'}
+    const fullText = await visionOCRFromBlob(file);
+    const raw = fullText.trim();
+    const parsed = parseOCRText(raw);
 
------- OCR RAW ------
-${fullText}`;
-    qs('log').textContent=rawText;
+    $('ocrLog').value = `【RAW】\n${raw}\n\n【PARSED】\n날짜: ${parsed.dates.join(', ')||'-'}\n시간: ${parsed.times.join(', ')||'-'}\n시리얼: ${parsed.serials.join(', ')||'-'}`;
+    setParsedBadges(parsed);
 
-    // DB 업로드용 라인 파싱
-    const parsed=parseOCRTextToRows(fullText);
-    state.ocr.parsedRows=parsed;
-
-    if(parsed.length){
-      qs('applyInfo').style.display='inline-block';
-      qs('applyInfo').textContent=`파싱 ${parsed.length}건 준비됨`;
-      qs('btnApply').disabled=false;
-      qs('ocrHint').textContent='인식 완료. "DB 반영"을 누르세요.';
-    }else{
-      qs('applyInfo').style.display='inline-block';
-      qs('applyInfo').textContent='파싱 결과 0건 (라인에 날짜·시간·시리얼이 함께 있어야 합니다)';
-      qs('btnApply').disabled=true;
-      qs('ocrHint').textContent='패턴 미일치';
-    }
+    // 기본값 저장(첫 후보)
+    state.ocr.text = raw;
+    state.ocr.date = parsed.dates[0] || null;
+    state.ocr.time = parsed.times[0] || null;
+    state.ocr.serial = parsed.serials[0] || null;
+    $('ocrInfo').textContent = '완료. [왼쪽 표로 추가]를 누르세요.';
   }catch(err){
-    qs('ocrHint').textContent='OCR 실패: '+(err?.message||String(err));
-    qs('btnApply').disabled=true;
-    qs('log').textContent='[OCR ERROR]\n'+(err?.stack||String(err));
-  }finally{
-    setTimeout(()=>{qs('drop').classList.remove('k')}, 600);
-    setTimeout(()=>URL.revokeObjectURL(url), 4000);
+    $('ocrInfo').innerHTML = `<span class="err">${esc(err.message||String(err))}</span>`;
   }
+}, {capture:true});
+
+/* OCR → 테이블로 추가 */
+function pushOcrToTable(){
+  const uid = (state.uid||'').trim().toUpperCase();
+  if(!uid){ alert('먼저 왼쪽에서 고유번호를 불러오세요.'); return; }
+  const d = state.ocr.date||''; const t = state.ocr.time||''; const s = state.ocr.serial||'';
+  if(!d || !t || !s){ alert('OCR에서 날짜/시간/시리얼을 파싱하지 못했습니다. 로그를 보고 직접 입력해주세요.'); return; }
+  addRow({unique_id:uid,'날짜':d,'시간':t,'인증샷 시리얼넘버':s});
+  $('ocrInfo').innerHTML = `<span class="ok">왼쪽 표에 1행 추가됨</span>`;
+}
+
+/* 유틸: 전체 선택 */
+$('chkAll').addEventListener('change', e=>{
+  document.querySelectorAll('.rowchk').forEach(c=>c.checked=e.target.checked);
 });
 
-/* ===== URL ?uid=AA0001 → 자동 조회 ===== */
-document.addEventListener('DOMContentLoaded', ()=>{
-  const p=new URLSearchParams(location.search); const uid=p.get('uid');
-  if(uid){ qs('uidInput').value=decodeURIComponent(uid).toUpperCase(); doSearch(1); }
-});
+/* 버튼 바인딩 */
+$('btnLoad').onclick = loadUID;
+$('btnAddRow').onclick = ()=>addRow({unique_id:state.uid});
+$('btnDeleteSel').onclick = deleteSelectedLocally;
+$('btnApply').onclick = applyChanges;
+$('btnMakeMsg').onclick = makeMessage;
+$('btnCopyMsg').onclick = copyMsg;
+$('btnPushToTable').onclick = pushOcrToTable;
+$('btnClearOcr').onclick = ()=>{
+  state.ocr={text:'',date:null,time:null,serial:null,imgUrl:null};
+  $('ocrPreview').innerHTML = `<span class="small">여기에 캡처 이미지를 붙여넣기(Ctrl+V)</span>`;
+  $('ocrLog').value=''; setParsedBadges({dates:[],times:[],serials:[]}); $('ocrInfo').textContent='';
+};
+$('btnPickLang').onclick = ()=>{
+  // ko/en 토글
+  VISION_LANG = (VISION_LANG[0]==='ko') ? ['en','ko'] : ['ko','en'];
+  $('btnPickLang').textContent = VISION_LANG.join(' / ');
+};
+
+/* 브로드캐스트(채팅 스크립트와 연동 필요할 때 대비) */
+function dispatchUIDSearched(uid){
+  window.dispatchEvent(new CustomEvent('uidSearched',{detail:{uid}}));
+}
+
+/* 초기 포커스 */
+$('uidInput').focus();
 </script>
 </body>
 </html>
