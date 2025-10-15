@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>이벤트 데이터 조회</title>
+  <style>
+/* 바디/컨테이너 */
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,'Open Sans','Helvetica Neue',sans-serif;margin:0;padding:16px;background:#f4f7f9;color:#333}
+.container{max-width:1100px;margin:24px auto;background:#fff;padding:20px;border-radius:12px;box-shadow:0 4px 14px rgba(0,0,0,.06)}
+
+/* 제목/탭 */
+h1{margin:0 0 12px;color:#2c3e50;font-size:22px}
+.tabs{display:flex;flex-wrap:wrap;border-bottom:1px solid #e5e7eb;margin-bottom:12px;gap:6px}
+.tab{padding:10px 14px;cursor:pointer;border-radius:8px 8px 0 0;font-size:14px}
+.tab.active{background:#eaf3ff;color:#1f6feb;border:1px solid #cfe3ff;border-bottom-color:#eaf3ff}
+.tabpanel{display:none}
+.tabpanel.active{display:block}
+
+/* 입력행 */
+.row{display:grid;grid-template-columns:1fr auto;gap:10px;margin-bottom:12px}
+input,select{padding:10px;font-size:14px;border:1px solid #d1d5db;border-radius:8px;width:100%}
+.btn{padding:10px 14px;background:#3498db;color:#fff;border:0;border-radius:8px;cursor:pointer}
+.btn:hover{background:#2980b9}
+.meta{display:flex;justify-content:space-between;align-items:center;margin-top:6px;color:#666;font-size:13px;gap:8px}
+.tag{background:#eef6ff;color:#1f6feb;border:1px solid #d0e7ff;border-radius:999px;padding:4px 10px;font-size:12px}
+.error{color:#d91e18}
+.center{text-align:center}
+.strong{font-weight:600}
+
+/* 테이블 + 래퍼(가로 스크롤) */
+.table-wrap{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;margin-top:10px;font-size:14px;min-width:640px}
+th,td{border:1px solid #eee;padding:10px;text-align:left;white-space:nowrap}
+th{background:#f6f8fa}
+tr:nth-child(even){background:#fafafa}
+
+/* 반응형 */
+@media (max-width: 900px){
+  .row{grid-template-columns:1fr;grid-auto-rows:auto}
+}
+@media (max-width: 600px){
+  body{padding:10px}
+  .container{margin:10px auto;padding:14px}
+  h1{font-size:18px}
+  .tab{font-size:13px}
+  table{min-width:520px}
+  input,select,.btn{font-size:15px;padding:12px}
+}
+
+    /* === 좌우 5:5 레이아웃(기존 기능은 그대로) === */
+.page-split { display:flex; gap:24px; align-items:flex-start; }
+.page-left, .page-right { flex:1 1 0; }
+
+/* 기존 .container가 column 너비를 꽉 채우도록(가로 중앙 max-width 해제) */
+.page-left .container { max-width:unset; margin:0; }
+
+/* === 오른쪽 채팅 카드 === */
+.chat-card {
+  background:#fff; border-radius:12px; box-shadow:0 4px 14px rgba(0,0,0,.06);
+  padding:14px; width:100%;
+  /* 화면 전체를 채우지 않도록 적당한 높이(그림처럼) */
+  height: 70vh;              /* 필요하면 수치만 조절하면 됨 */
+  display:flex; flex-direction:column;
+}
+.chat-title { font-weight:700; font-size:16px; margin-bottom:8px; color:#2c3e50; }
+.chat-box {
+  flex:1; overflow-y:auto; background:#f9fafb; border:1px solid #e5e7eb;
+  border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:8px;
+}
+.chat-row { display:flex; gap:8px; margin-top:10px; }
+#chatInput {
+  flex:1; padding:10px; border:1px solid #d1d5db; border-radius:8px; font-size:14px;
+  background:#fff;
+}
+#chatSend {
+  background:#2563eb; color:#fff; border:none; border-radius:8px; padding:10px 16px; cursor:pointer;
+}
+#chatSend:hover { background:#1d4ed8; }
+
+/* 말풍선 */
+.msg { max-width:80%; padding:8px 12px; border-radius:12px; line-height:1.4; word-break:break-word; white-space:pre-wrap; }
+.msg.me { align-self:flex-end; background:#1f6feb; color:#fff; border-bottom-right-radius:4px; }
+.msg.bot{ align-self:flex-start; background:#e5e7eb; color:#333; border-bottom-left-radius:4px; }
+
+/* 반응형(필요 시) */
+@media (max-width: 1100px){
+  .page-split { flex-direction:column; }
+  .chat-card { height: 56vh; }
+}
+
+  </style>
+</head>
+<body>
+  <div class="page-split">
+      <div class="page-left">
+  <div class="container">
+    <h1>이벤트 데이터 조회</h1>
+
+    <div class="tabs">
+      <div class="tab active" data-tab="uid">고유번호 검색</div>
+      <div class="tab" data-tab="serial">시리얼 검색</div>
+    </div>
+
+    <!-- 고유번호 검색 탭 -->
+    <div id="panel-uid" class="tabpanel active">
+      <div class="row">
+        <input id="uidInput" placeholder="고유번호(unique_id)" />
+        <div style="display:flex; gap:8px; align-items:center;">
+          <button class="btn" onclick="searchByUID()">검색</button>
+          <span class="tag" id="pageInfo">page 1</span>
+          <button class="btn" onclick="prevPage()">◀</button>
+          <button class="btn" onclick="nextPage()">▶</button>
+          <select id="limitSel" onchange="changeLimit()">
+            <option value="50">50</option>
+            <option value="100">100</option>
+            <option value="200">200</option>
+            <option value="500" selected>500</option>
+          </select>
+        </div>
+      </div>
+      <div class="meta">
+        <div id="loader" style="display:none">검색 중… <span id="timer">0.0</span>초</div>
+      </div>
+      <div id="uidResults"></div>
+    </div>
+
+    <!-- 시리얼 검색 탭 -->
+    <div id="panel-serial" class="tabpanel">
+      <div class="row" style="grid-template-columns:1fr 1fr 1fr auto;">
+        <input id="serialInput" placeholder="시리얼번호 정확히 입력" />
+        <input id="serialDateFrom" placeholder="시작일자 YYYY.MM.DD (선택)" />
+        <input id="serialDateTo" placeholder="종료일자 YYYY.MM.DD (선택)" />
+        <button class="btn" onclick="searchBySerial()">검색</button>
+      </div>
+      <div id="serialInfo" class="tag" style="display:none;"></div>
+      <div id="serialResults"></div>
+    </div>
+  </div>
+          </div>
+
+     <div class="page-right">
+    <div class="chat-card">
+      <div class="chat-title">채팅</div>
+      <div id="chatBox" class="chat-box"></div>
+      <div class="chat-row">
+        <input id="chatInput" type="text" placeholder="메시지를 입력하고 Enter를 누르세요…" />
+        <button id="chatSend">입력</button>
+      </div>
+    </div>
+  </div>
+    </div>
+
+  <script>
+/* ===== 설정 ===== */
+const baseUrl   = 'https://my-search-backend.onrender.com'; // ← 백엔드 주소
+const apiSearch = `${baseUrl}/search`;         // unique_id 검색 (배열 반환)
+const apiSerial = `${baseUrl}/search-serial`;  // 시리얼 검색
+
+/* ===== 상태/유틸 ===== */
+let timerInterval;
+let state = { page:1, limit:500, lastData:null };
+
+function wrapTable(html){ return `<div class="table-wrap">${html}</div>`; }
+function qs(id){ return document.getElementById(id); }
+function escapeHtml(x){ return String(x).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;'); }
+function startTimer(){ let s=Date.now(); qs('timer').textContent='0.0'; qs('loader').style.display='block'; timerInterval=setInterval(()=>{ qs('timer').textContent=((Date.now()-s)/1000).toFixed(1); },100);} 
+function stopTimer(){ clearInterval(timerInterval); qs('loader').style.display='none'; }
+
+// 날짜 배열
+function getDateRange(startStr, endStr) {
+  const toDate = (s) => { const [Y, M, D] = s.split('.').map(Number); return new Date(Y, M - 1, D); };
+  const fmt = (d) => { const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); const day=String(d.getDate()).padStart(2,'0'); return `${y}.${m}.${day}`; };
+  const res = []; let cur = toDate(startStr); const end = toDate(endStr);
+  while (cur <= end) { res.push(fmt(cur)); cur.setDate(cur.getDate() + 1); }
+  return res;
+}
+// "YYYY.MM.DD" → "M/D"
+function toMD(dateStr) { const parts = dateStr.split('.').map(Number); return `${parts[1]}/${parts[2]}`; }
+
+// 강화된 시간 파서: 오전/오후/AM/PM/HH:MM[:SS]/공백/한글 구분자 허용
+function timeToMinutes(t) {
+  if (!t) return null;
+  const s = String(t).trim();
+  const ampmMatch = s.match(/오전|오후|AM|PM/i);
+  const ampm = ampmMatch ? ampmMatch[0].toLowerCase() : null;
+  // "HH:MM[:SS]" 또는 "HH시MM분" 등
+  const cleaned = s.replace(/\s+/g,'');
+  const m = cleaned.match(/(\d{1,2})[:시](\d{1,2})/);
+  if (!m) return null;
+  let h = parseInt(m[1], 10);
+  let mm = parseInt(m[2], 10);
+  if (Number.isNaN(h) || Number.isNaN(mm)) return null;
+  if (ampm) {
+    const isPM = /pm|오후/i.test(ampm);
+    const isAM = /am|오전/i.test(ampm);
+    if (isPM && h < 12) h += 12;
+    if (isAM && h === 12) h = 0;
+  }
+  if (h < 0 || h > 23 || mm < 0 || mm > 59) return null;
+  return h * 60 + mm;
+}
+
+/* ===== 탭 전환 ===== */
+document.querySelectorAll('.tab').forEach(t=>{
+  t.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.tabpanel').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active'); qs('panel-'+t.dataset.tab).classList.add('active');
+  });
+});
+
+/* ===== 공통 페치 ===== */
+async function fetchRows(uid, page, limit) {
+  const safeLimit = Math.max(1, Math.min(limit, 500)); // 1~500
+  const u = new URL(apiSearch);
+  u.searchParams.set('unique_id', uid);
+  u.searchParams.set('page', page);
+  u.searchParams.set('limit', safeLimit);
+  const res = await fetch(u, { mode:'cors' });
+  if (!res.ok) throw new Error('서버 오류');
+  return await res.json();
+}
+
+/* ===== 고유번호 검색 ===== */
+async function searchByUID(page=null){
+  const idRaw = qs('uidInput').value.trim();
+  if(!idRaw){ alert('고유번호를 입력하세요.'); return; }
+  const uid = idRaw.toUpperCase(); // 대문자 통일 검색
+
+  state.page = page ?? state.page;
+  qs('limitSel').value = String(state.limit);
+  qs('pageInfo').textContent = `page ${state.page}`;
+
+  try{
+    startTimer();
+    // 상세 표(현재 페이지) + 요약(전체 1페이지 500행)
+    const [pageRows, allRows] = await Promise.all([
+      fetchRows(uid, state.page, state.limit),
+      fetchRows(uid, 1, 500) // UID당 최대 400이라 가정
+    ]);
+    stopTimer();
+    state.lastData = pageRows;
+    renderUIDTable(pageRows, allRows);
+  }catch(e){
+    stopTimer();
+    qs('uidResults').innerHTML = `<p class="error">오류: ${escapeHtml(e.message)}</p>`;
+  }
+}
+
+function prevPage(){ if(state.page>1) searchByUID(state.page-1); }
+function nextPage(){ searchByUID(state.page+1); }
+function changeLimit(){ state.limit = Number(qs('limitSel').value || 500); state.page=1; searchByUID(1); }
+qs('uidInput').addEventListener('keydown',e=>{ if(e.key==='Enter') searchByUID(1); });
+
+/* ===== 요약+상세 렌더 ===== */
+function renderUIDTable(pageRows, allRows){
+  const wrap = qs('uidResults');
+  const rowsForSummary = (allRows && allRows.length) ? allRows : pageRows;
+  if ((!pageRows || pageRows.length===0) && (!rowsForSummary || rowsForSummary.length===0)) {
+    wrap.innerHTML = '<p>검색 결과가 없습니다.</p>'; 
+    return;
+  }
+
+  // 1) 날짜 범위
+  const df = '2025.09.19';
+  const dt = '2025.09.25';
+  const days = getDateRange(df, dt);
+  const day25 = '2025.09.25';
+
+  // 2) 날짜별 카운트 + 9/25 분리 (요약은 전체 rows 기준)
+  const counts = Object.fromEntries(days.map(d => [d, 0]));
+  let count25_first = 0; // 00:00~09:59
+  let countLive     = 0; // 12:00~23:59
+
+  rowsForSummary.forEach(r => {
+    const d = String(r['날짜'] ?? '').trim();
+    const t = String(r['시간'] ?? '').trim();
+    if (!d || !counts.hasOwnProperty(d)) return;
+
+    if (d === day25) {
+      const mins = timeToMinutes(t);
+      if (mins !== null) {
+        if (mins <= 9*60 + 59)      count25_first += 1;   // 1차
+        else if (mins >= 12*60)     countLive     += 1;   // 생방
+        // 10:00~11:59는 요약 미집계(상세에는 그대로 표기)
+      }
+    } else {
+      counts[d] += 1;
+    }
+  });
+
+  // 3) 요약(원본) 표
+  const headerLabels = [];
+  const headerKeys   = [];
+  days.forEach(d => {
+    if (d === day25) {
+      headerLabels.push('9/25(1차)'); headerKeys.push(d + '_first');
+      headerLabels.push('생방');       headerKeys.push(d + '_live');
+    } else {
+      headerLabels.push(toMD(d));      headerKeys.push(d);
+    }
+  });
+  const summaryCells = headerKeys.map(key => {
+    if (key.endsWith('_first')) return count25_first;
+    if (key.endsWith('_live'))  return countLive;
+    return counts[key] ?? 0;
+  });
+
+  let perfectOriginal = true;
+  for (const d of days) {
+    if (d === day25) continue;
+    if ((counts[d] || 0) < 1) { perfectOriginal = false; break; }
+  }
+  if (count25_first < 1) perfectOriginal = false;
+
+  let summary = '<table><thead><tr><th style="min-width:110px">참여 요약(원본)</th>';
+  headerLabels.forEach(lbl => { summary += `<th>${lbl}</th>`; });
+  summary += '</tr></thead><tbody>';
+  summary += `<tr><td>건수</td>${summaryCells.map(c => `<td class="center">${c}</td>`).join('')}</tr>`;
+  summary += `<tr><td>개근(원본)</td><td colspan="${headerLabels.length}" class="center strong">${perfectOriginal ? 'o' : 'x'}</td></tr>`;
+  summary += '</tbody></table>';
+
+  // 4) 수정 가능한 패널
+  const editableHTML = renderEditPanel({
+    days, day25,
+    baseCounts: counts,
+    base25First: count25_first,
+    baseLive: countLive
+  });
+
+  // 5) 상세 표(현재 페이지 rows)
+  let detail = '<table style="margin-top:12px"><thead><tr>' +
+    '<th>고유번호</th><th>날짜</th><th>시간</th><th>인증샷 시리얼넘버</th>' +
+    '</tr></thead><tbody>';
+  pageRows.forEach(r => {
+    const serial = r['인증샷 시리얼넘버'] ?? r['인증샷시리얼넘버'] ?? '';
+    detail += `<tr>
+      <td>${escapeHtml(r.unique_id ?? '')}</td>
+      <td>${escapeHtml(String(r['날짜'] ?? '').trim())}</td>
+      <td>${escapeHtml(String(r['시간'] ?? '').trim())}</td>
+      <td>${escapeHtml(serial)}</td>
+    </tr>`;
+  });
+  detail += '</tbody></table>';
+
+  wrap.innerHTML = wrapTable(summary) + wrapTable(editableHTML) + wrapTable(detail);
+}
+
+/* ===== 수정 가능한 집계 패널 + 메시지 ===== */
+/* ===== 수정 가능한 집계 패널 + 메시지 ===== */
+function renderEditPanel({ days, day25, baseCounts, base25First, baseLive }) {
+  // 날짜별 값 계산 그대로 사용 (입력칸 대신 기본값만 사용)
+  const v = {
+    '2025.09.19': baseCounts['2025.09.19'] || 0,
+    '2025.09.20': baseCounts['2025.09.20'] || 0,
+    '2025.09.21': baseCounts['2025.09.21'] || 0,
+    '2025.09.22': baseCounts['2025.09.22'] || 0,
+    '2025.09.23': baseCounts['2025.09.23'] || 0,
+    '2025.09.24': baseCounts['2025.09.24'] || 0,
+    '25_first': base25First || 0,
+    'live': baseLive || 0
+  };
+
+  // 합계/개근/가중치 계산
+  const k = v['2025.09.19'] + v['2025.09.20'] + v['2025.09.21'] +
+            v['2025.09.22'] + v['2025.09.23'] + v['2025.09.24'] + v['25_first'];
+  const n = v['live'];
+  const perfect = [v['2025.09.19'], v['2025.09.20'], v['2025.09.21'],
+                   v['2025.09.22'], v['2025.09.23'], v['2025.09.24']]
+                   .every(x => x >= 1) && v['25_first'] >= 1;
+  const weight = perfect ? (n * 8) : n;
+
+  // 요약 데이터 저장 → generateMessage()가 참조함
+  state.lastSummary = v;
+
+  let html = `
+  <div style="margin-top:16px">
+    <h3 style="margin:6px 0 4px; color:#2c3e50;">메시지 생성</h3>
+    <div class="meta" style="margin-top:8px">
+      <div id="editedInfo" class="tag">
+        사전 합계: ${k}건 · 생방: ${n}건 · 개근: ${perfect ? 'o' : 'x'} · 가중치: ${weight}
+      </div>
+      <div>
+        <button class="btn" onclick="generateAndCopy()">메시지 생성 & 복사</button>
+      </div>
+    </div>
+    <textarea id="messageBox" rows="10" style="width:100%; margin-top:8px; font-family:inherit;"></textarea>
+  </div>`;
+
+  return html;
+}
+
+
+function getEditedCounts() {
+  return state.lastSummary || {
+    '2025.09.19': 0,
+    '2025.09.20': 0,
+    '2025.09.21': 0,
+    '2025.09.22': 0,
+    '2025.09.23': 0,
+    '2025.09.24': 0,
+    '25_first': 0,
+    'live': 0
+  };
+
+}
+
+function updateEditedSummary() {
+  const v = getEditedCounts();
+  const k = v['2025.09.19'] + v['2025.09.20'] + v['2025.09.21'] +
+            v['2025.09.22'] + v['2025.09.23'] + v['2025.09.24'] +
+            v['25_first']; // 사전 누적
+  const n = v['live'];     // 생방
+  const perfect = [v['2025.09.19'],v['2025.09.20'],v['2025.09.21'],v['2025.09.22'],v['2025.09.23'],v['2025.09.24']].every(x=>x>=1) && v['25_first']>=1;
+  const weight = perfect ? (n*8) : n;
+  qs('editedInfo').textContent = `사전 합계: ${k}건 · 생방: ${n}건 · 개근: ${perfect ? 'o' : 'x'} · 가중치: ${weight}`;
+}
+
+function generateMessage() {
+  const uid = (qs('uidInput').value || '').trim().toUpperCase();
+  const v = getEditedCounts();
+  const a=v['2025.09.19'], b=v['2025.09.20'], c=v['2025.09.21'],
+        d=v['2025.09.22'], e=v['2025.09.23'], f=v['2025.09.24'],
+        g=v['25_first'],   n=v['live'];
+  const k = a+b+c+d+e+f+g;
+  const perfect = [a,b,c,d,e,f].every(x=>x>=1) && g>=1;
+  const weight = perfect ? (n*8) : n;
+
+  const msg =
+`📢 고유번호 님, 최종 집계 안내입니다.
+
+✔전체 투표 참여내역
+(09.19 - 09.25)
+19일 - ${a}건 
+20일 - ${b}건 
+21일 - ${c}건 
+22일 - ${d}건 
+23일 - ${e}건 
+24일 - ${f}건 
+25일 사전투표 - ${g}건 
+25일 생방투표 - ${n}건
+
+🍀 사전 투표기간 총 누적투표수 : ${k}건 
+(생방 투표는 누적투표수에 포함되지 않습니다.)
+
+고유번호 님은 ${perfect ? '개근에 해당됩니다.' : '개근에 해당되지 않습니다.'}
+개근은 19일 투표부터 25일 오전 투표까지 모두 해주신 분들만 해당됩니다.
+
+25일 생방 투표 참여내역은 ${n}건입니다.
+개근 여부에 따른 생방 이벤트 총 가중치는 ${perfect ? `${n}→ 8×${n} = ${weight}` : `${weight}`} 입니다.
+
+씬롱이에게 투표해주셔서 감사드립니다😺
+원활한 검수를 위해 답장은 보내지 말아주세요🙏
+
+누락 및 정정 문의는 이곳이 아닌 문의 채널 "허씬롱 갤러리 Q&A"로 부탁드립니다.
+반드시 문의 전 문의 채널 하단의 양식을 참고해서 문의해주세요🙏
+문의 채널 링크 📍 
+http://pf.kakao.com/_cFxexcn `;
+
+  qs('messageBox').value = msg.replaceAll('고유번호', uid || '고유번호');
+}
+
+function copyMessage(){
+  const ta = qs('messageBox');
+  ta.select(); ta.setSelectionRange(0, 99999);
+  document.execCommand('copy');
+  const prev = qs('editedInfo').textContent;
+  qs('editedInfo').textContent = '메시지를 클립보드에 복사했습니다.';
+  setTimeout(()=> qs('editedInfo').textContent = prev, 1500);
+}
+
+function generateAndCopy() {
+  generateMessage();
+  setTimeout(copyMessage, 100); // 메시지 생성 후 0.1초 뒤 복사 실행
+}
+
+/* ===== 시리얼 검색 ===== */
+async function searchBySerial(){
+  const serial = qs('serialInput').value.trim();
+  const df = qs('serialDateFrom').value.trim();
+  const dt = qs('serialDateTo').value.trim();
+  if(!serial){ alert('시리얼번호를 입력하세요.'); return; }
+  const u = new URL(apiSerial);
+  u.searchParams.set('serial', serial);
+  if(df) u.searchParams.set('date_from', df);
+  if(dt) u.searchParams.set('date_to', dt);
+  qs('serialInfo').style.display='none';
+  qs('serialResults').innerHTML = '조회 중…';
+  try{
+    const res = await fetch(u, {mode:'cors'});
+    if(!res.ok) throw new Error('서버 오류');
+    const arr = await res.json();
+    renderSerial(arr);
+    qs('serialInfo').textContent = `${serial} · ${arr.length}건`;
+    qs('serialInfo').style.display='inline-block';
+  }catch(e){
+    qs('serialResults').innerHTML = `<p class="error">오류: ${escapeHtml(e.message)}</p>`;
+  }
+}
+
+function renderSerial(rows){
+  const div = qs('serialResults');
+  if(!rows || rows.length===0){ div.innerHTML='<p>해당 시리얼번호로 조회된 결과가 없습니다.</p>'; return; }
+  const byUID = {};
+  rows.forEach(r=>{ const k = r.unique_id || '(unknown)'; (byUID[k] ||= []).push(r); });
+  let html = '<table><thead><tr><th>고유번호</th><th>날짜·시간 목록</th></tr></thead><tbody>';
+  Object.keys(byUID).sort().forEach(uid=>{
+    const lines = byUID[uid].map(r=> `${escapeHtml((r['날짜']||'').trim())} ${escapeHtml((r['시간']||'').trim())}`).join('<br/>');
+    html += `<tr><td>${escapeHtml(uid)}</td><td>${lines}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  div.innerHTML = wrapTable(html);
+}
+
+/* ===== URL ?uid=AA0001 → 자동 조회 ===== */
+document.addEventListener('DOMContentLoaded', () => {
+  const params = new URLSearchParams(location.search);
+  const uid = params.get('uid');
+  if (uid) {
+    const tabBtn = document.querySelector('.tab[data-tab="uid"]');
+    if (tabBtn) tabBtn.click?.();
+    const input = qs('uidInput');
+    if (input) {
+      input.value = decodeURIComponent(uid).toUpperCase();
+      searchByUID(1);
+    }
+  }
+});
+  </script>
+
+  <script>
+(() => {
+  const box  = document.getElementById('chatBox');
+  const input= document.getElementById('chatInput');
+  const btn  = document.getElementById('chatSend');
+  if (!box || !input || !btn) return;
+
+  function addMsg(text, me=true){
+    const d = document.createElement('div');
+    d.className = 'msg ' + (me ? 'me' : 'bot');
+    d.textContent = text;
+    box.appendChild(d);
+    box.scrollTop = box.scrollHeight;
+  }
+
+  function send(){
+    const t = (input.value || '').trim();
+    if(!t) return;
+    addMsg(t, true);
+    input.value = '';
+    // 봇 응답이 필요 없으면 아래 한 줄 지워도 됨
+    // addMsg('응답: ' + t, false);
+  }
+
+  input.addEventListener('keydown', (e)=>{ if(e.key==='Enter') send(); });
+  btn.addEventListener('click', send);
+})();
+</script>
+
+  <script>
+/** 0) 채팅 버블 유틸(전역) */
+function chatAdd(text, who='bot') {
+  const box = document.getElementById('chatBox');
+  if (!box) return;
+  const d = document.createElement('div');
+  d.className = 'msg ' + (who === 'me' ? 'me' : 'bot');
+  d.textContent = text;
+  box.appendChild(d);
+  box.scrollTop = box.scrollHeight;
+}
+function chatAddImage(url){
+  const box = document.getElementById('chatBox');
+  if (!box) return;
+  const d = document.createElement('div');
+  d.className = 'msg me';
+  const img = new Image();
+  img.src = url;
+  img.style.maxWidth = '240px';
+  img.style.borderRadius = '8px';
+  img.style.border = '1px solid #e5e7eb';
+  d.appendChild(img);
+  box.appendChild(d);
+  box.scrollTop = box.scrollHeight;
+}
+
+/** 1) webp/jpg 등을 png로 변환(ocr.space가 더 잘 먹음) */
+async function toPngBlob(file) {
+  if (file.type === 'image/png') return file;
+  const bmp = await createImageBitmap(file);
+  const canvas = document.createElement('canvas');
+  canvas.width = bmp.width; canvas.height = bmp.height;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(bmp, 0, 0);
+  return await new Promise(res => canvas.toBlob(b => res(b), 'image/png', 0.95));
+}
+
+/** 2) OCR.space 호출 */
+const OCRSPACE_KEY = 'K81476248188957'; // ← 본인 키로 교체
+
+async function ocrWithOCRSpace(origFile) {
+  const pngBlob = await toPngBlob(origFile);
+  const form = new FormData();
+  form.append('apikey', OCRSPACE_KEY);
+  form.append('language', 'eng');           // 숫자/콜론/슬래시 위주면 eng 권장
+  form.append('scale', 'true');
+  form.append('detectOrientation', 'true');
+  form.append('OCREngine','2');          // 필요시 고정 엔진; 문제되면 주석 처리
+  form.append('file', pngBlob, 'paste.png');
+
+  const res = await fetch('https://api.ocr.space/parse/image', { method:'POST', body:form });
+  if (!res.ok) throw new Error('네트워크 오류(' + res.status + ')');
+  const data = await res.json();
+
+  if (data.IsErroredOnProcessing) {
+    const em = Array.isArray(data.ErrorMessage) ? data.ErrorMessage.join(', ') : (data.ErrorMessage || '처리 에러');
+    throw new Error(em);
+  }
+  const text = (data?.ParsedResults?.[0]?.ParsedText || '').trim();
+  if (!text) throw new Error('빈 결과');
+  return text;
+}
+
+/** 3) 붙여넣기 이벤트: 이미지 → 미리보기 → OCR → 원문 출력 */
+window.addEventListener('paste', async (e) => {
+  const item = [...(e.clipboardData?.items || [])].find(i => i.kind === 'file' && i.type.startsWith('image/'));
+  if (!item) return;
+
+  const file = item.getAsFile();
+  const url = URL.createObjectURL(file);
+
+  // 미리보기(사용자 버블)
+  chatAddImage(url);
+
+  // 진행 메시지
+  chatAdd('이미지 접수됨. OCR 처리 중…', 'bot');
+
+  try {
+    const text = await ocrWithOCRSpace(file);
+    // 원문 일부/전체 출력 (너무 길면 앞 500자만)
+    const shown = text.length > 500 ? text.slice(0, 500) + ' …' : text;
+    chatAdd('RAW: ' + shown, 'bot');
+  } catch (err) {
+    chatAdd('OCR 에러: ' + (err?.message || String(err)), 'bot');
+  } finally {
+    // 메모리 정리
+    setTimeout(() => URL.revokeObjectURL(url), 3000);
+  }
+});
+</script>
+
+
+</body>
+</html>
