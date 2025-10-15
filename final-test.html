@@ -829,6 +829,64 @@ async function saveEdits(){
     E('editMsg').textContent = `오류: ${e.message}`;
   }
 }
+
+    /* ==== OCR → 관리테이블 자동 채우기 ==== */
+// OCR 텍스트 파싱 함수
+function parseOCRText(raw) {
+  const lines = raw.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+  let date = '', time = '', serial = '';
+
+  // 날짜·시간 패턴 찾기
+  for (const l of lines) {
+    const m = l.match(/(\d{4}\.\d{2}\.\d{2})\s+(\d{1,2}:\d{2})/);
+    if (m) {
+      date = m[1];
+      time = m[2];
+    }
+    const srl = l.match(/No\.\s*([A-Za-z0-9\-_]+)/);
+    if (srl) serial = srl[1];
+  }
+
+  return { date, time, serial };
+}
+
+// OCR 결과 채팅 감시 후 자동 반영
+const chatBox = document.getElementById('chatBox');
+const observer = new MutationObserver(() => {
+  const msgs = [...chatBox.querySelectorAll('.msg.bot')];
+  if (msgs.length === 0) return;
+  const last = msgs[msgs.length - 1];
+  const txt = last.textContent || '';
+  if (txt.startsWith('RAW:')) {
+    const parsed = parseOCRText(txt);
+    if (parsed.date && parsed.time && parsed.serial) {
+      // 관리 탭 테이블에 자동 추가
+      autoAddOCRRow(parsed);
+    }
+  }
+});
+observer.observe(chatBox, { childList: true });
+
+// 관리 테이블에 OCR 행 추가
+function autoAddOCRRow({ date, time, serial }) {
+  const uid = (document.getElementById('editUid')?.value || '').trim().toUpperCase();
+  if (!uid) {
+    chatAdd('⚠️ 관리 탭에 고유번호를 먼저 입력해야 합니다.', 'bot');
+    return;
+  }
+
+  const tmpId = 'ocr_' + Math.random().toString(36).slice(2, 8);
+  editState.inserts.push({
+    _tmpId: tmpId,
+    unique_id: uid,
+    '날짜': date,
+    '시간': time,
+    '인증샷 시리얼넘버': serial
+  });
+
+  renderEditTable();
+  chatAdd(`✅ OCR 데이터 자동 추가됨: ${date} ${time} / ${serial}`, 'bot');
+}
   </script>
 </body>
 </html>
