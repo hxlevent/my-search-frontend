@@ -17,6 +17,7 @@
   button{background:var(--pri);color:#fff;border:0;border-radius:8px;padding:9px 12px;cursor:pointer}
   button.ghost{background:#eef2ff;color:#1f34a2}
   button.light{background:#e5e7eb;color:#333}
+  button.green{background:#16a34a}
   .tag{background:#eef6ff;border:1px solid #cfe3ff;color:#1f6feb;border-radius:999px;padding:3px 8px;font-size:12px}
   .table-wrap{overflow:auto;border:1px solid var(--b);border-radius:8px}
   table{width:100%;border-collapse:collapse;min-width:720px}
@@ -60,7 +61,7 @@
         <button class="light" id="btnDeleteSel">선택 삭제</button>
         <button id="btnApply">DB 반영</button>
       </div>
-      <span class="small">※ 표에서 값 직접 수정 가능(UID/날짜/시간/시리얼). ‘DB 반영’ 눌러야 저장됩니다.</span>
+      <span class="small">※ 표에서 값 직접 수정 가능(UID/날짜/시간/시리얼). ‘DB 반영’은 저장용일 뿐, 메시지 생성과 무관합니다.</span>
     </div>
 
     <div class="table-wrap">
@@ -80,12 +81,13 @@
       </table>
     </div>
 
-    <div class="row" style="margin-top:10px">
-      <button class="light" id="btnMakeMsg">메시지 생성</button>
+    <!-- 메시지 영역 (DB 반영과 완전 분리) -->
+    <div class="row" style="margin-top:12px">
+      <button class="green" id="btnMakeMsg">최종 안내 메시지 생성</button>
       <button class="ghost" id="btnCopyMsg">복사</button>
-      <span class="small" id="msgInfo"></span>
+      <span class="small" id="msgInfo">표에 있는 값 기준으로 즉시 생성합니다. (DB 반영 불필요)</span>
     </div>
-    <textarea id="messageBox" placeholder="‘메시지 생성’ 누르면 자동으로 채워집니다."></textarea>
+    <textarea id="messageBox" placeholder="‘최종 안내 메시지 생성’을 누르면 자동으로 채워집니다."></textarea>
   </div>
 
   <!-- RIGHT: OCR -->
@@ -116,7 +118,7 @@
           <span class="small" id="ocrInfo"></span>
         </div>
 
-        <!-- ★ 수동 입력 라인(추가) -->
+        <!-- 수동 입력 라인 -->
         <div class="manual">
           <input id="m_date"  placeholder="YYYY.MM.DD (없으면 직접 입력)"/>
           <input id="m_time"  placeholder="HH:MM (예: 0:1 → 00:01 자동보정)"/>
@@ -145,14 +147,13 @@ let VISION_LANG = ['ko','en'];
 const $ = (id)=>document.getElementById(id);
 const state = {
   rows: [], baseById: {}, uid: '',
-  ocr: {text:'', date:null, time:null, serial:null, imgUrl:null}
+  ocr: {text:'', date:'', time:'', serial:'', imgUrl:null}
 };
 
 /* ========= 도우미 ========= */
 function esc(s){ return String(s==null?'':s); }
 function pad2(n){ return String(n).padStart(2,'0'); }
 function isYmd(s){ return /^\d{4}\.(0[1-9]|1[0-2])\.(0[1-9]|[12]\d|3[01])$/.test(s||''); }
-function isHm(s){ return /^([01]\d|2[0-3]):[0-5]\d$/.test(s||''); }
 function renderCountTag(){
   if(!state.rows.length){ $('countTag').style.display='none'; return; }
   $('countTag').style.display='inline-block';
@@ -208,7 +209,6 @@ async function loadUID(){
   for(const r of j.rows){ if(r._id) state.baseById[r._id]=JSON.parse(JSON.stringify(r)); }
   renderTable();
   $('loadInfo').textContent = '완료';
-  dispatchUIDSearched(uid);
 }
 
 /* ========= 행 추가/삭제 ========= */
@@ -240,7 +240,7 @@ async function applyChanges(){
     const d=(r['날짜']||'').trim();
     const t=(r['시간']||'').trim();
     const s=(r['인증샷 시리얼넘버']||'').trim();
-    if(!uid || !d || !t || !s){ continue; }
+    if(!uid || !d || !t || !s) continue;
 
     if(!r._id){ inserts.push({unique_id:uid,'날짜':d,'시간':t,'인증샷 시리얼넘버':s}); }
     else{
@@ -254,8 +254,6 @@ async function applyChanges(){
     }
   }
 
-  if(!inserts.length && !updates.length && !deletes.length){ alert('변경 사항이 없습니다.'); return; }
-
   $('loadInfo').textContent = 'DB 반영 중…';
   const res = await fetch(API_BULK, {
     method:'POST',
@@ -266,10 +264,11 @@ async function applyChanges(){
   if(!j.ok){ $('loadInfo').textContent='오류'; alert(j.error||'반영 실패'); return; }
 
   $('loadInfo').textContent = `반영됨: upsert ${j.upserts}, update ${j.modified}, delete ${j.deleted}`;
+  // 재로드는 선택사항 (표 최신화용)
   loadUID().catch(()=>{});
 }
 
-/* ========= 메시지 생성 ========= */
+/* ========= 메시지 생성 (DB 반영과 완전 분리) ========= */
 function hmToMin(s){ const m=(s||'').match(/^(\d{1,2}):(\d{2})$/); if(!m) return null; const h=+m[1], mm=+m[2]; if(h>23||mm>59) return null; return h*60+mm; }
 function computeSummary(){
   const want = new Set(['2025.09.19','2025.09.20','2025.09.21','2025.09.22','2025.09.23','2025.09.24','2025.09.25']);
@@ -285,7 +284,7 @@ function computeSummary(){
   return {...cnt, first25, live, preTotal, perfect};
 }
 function makeMessage(){
-  const uid=state.uid||'고유번호';
+  const uid=(state.uid||'').trim() || '고유번호';
   const S=computeSummary(); const w=S.perfect?(S.live*8):S.live;
   const msg =
 `📢 ${uid} 님, 최종 집계 안내입니다.
@@ -318,7 +317,7 @@ ${uid} 님은 ${S.perfect ? '개근에 해당됩니다.' : '개근에 해당되�
 문의 채널 링크 📍
 http://pf.kakao.com/_cFxexcn`;
   $('messageBox').value = msg;
-  $('msgInfo').textContent = '생성 완료';
+  $('msgInfo').textContent = '생성 완료 (DB 반영과 무관)';
 }
 function copyMsg(){ const ta=$('messageBox'); ta.focus(); ta.select(); document.execCommand('copy'); $('msgInfo').textContent='복사됨'; setTimeout(()=>$('msgInfo').textContent='',1200); }
 
@@ -391,7 +390,7 @@ document.addEventListener('paste', async (e)=>{
     $('ocrLog').value = `【RAW】\n${raw}\n\n【PARSED】\n날짜: ${parsed.dates.join(', ')||'-'}\n시간: ${parsed.times.join(', ')||'-'}\n시리얼: ${parsed.serials.join(', ')||'-'}`;
     setParsedBadges(parsed);
 
-    // 기본값 저장 + 수동 입력칸에 채우기
+    // 기본값 + 수동 입력칸 채우기
     state.ocr.text = raw;
     state.ocr.date = parsed.dates[0] || '';
     state.ocr.time = parsed.times[0] || '';
@@ -407,7 +406,7 @@ document.addEventListener('paste', async (e)=>{
   }
 }, {capture:true});
 
-/* 파싱값 채우기(버튼) */
+/* 파싱값 채우기 */
 $('btnUseParsed').onclick = ()=>{
   $('m_date').value  = state.ocr.date || '';
   $('m_time').value  = state.ocr.time || '';
@@ -432,7 +431,6 @@ function pushOcrToTable(){
   let t = $('m_time').value.trim() || state.ocr.time || '';
   let s = $('m_serial').value.trim() || state.ocr.serial || '';
 
-  // 날짜/시간 최종 검증 + 보정
   if(!isYmd(d)){ alert('날짜를 YYYY.MM.DD 형식으로 입력하세요.'); return; }
   const tFix = normalizeHm(t);
   if(!tFix){ alert('시간을 HH:MM 형식으로 입력하세요. (예: 0:1 → 00:01)'); return; }
@@ -453,7 +451,7 @@ $('btnLoad').onclick = loadUID;
 $('btnAddRow').onclick = ()=>addRow({unique_id:state.uid});
 $('btnDeleteSel').onclick = deleteSelectedLocally;
 $('btnApply').onclick = applyChanges;
-$('btnMakeMsg').onclick = makeMessage;
+$('btnMakeMsg').onclick = makeMessage;   // ★ DB 반영과 무관, 항상 동작
 $('btnCopyMsg').onclick = copyMsg;
 $('btnPushToTable').onclick = pushOcrToTable;
 $('btnClearOcr').onclick = ()=>{
@@ -466,11 +464,6 @@ $('btnPickLang').onclick = ()=>{
   VISION_LANG = (VISION_LANG[0]==='ko') ? ['en','ko'] : ['ko','en'];
   $('btnPickLang').textContent = VISION_LANG.join(' / ');
 };
-
-/* 브로드캐스트(연동 대비) */
-function dispatchUIDSearched(uid){
-  window.dispatchEvent(new CustomEvent('uidSearched',{detail:{uid}}));
-}
 
 /* 초기 포커스 */
 $('uidInput').focus();
