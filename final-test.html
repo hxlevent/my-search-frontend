@@ -48,7 +48,7 @@ tr:nth-child(even){background:#fafafa}
   input,select,.btn{font-size:15px;padding:12px}
 }
 
-    /* === 좌우 5:5 레이아웃(기존 기능은 그대로) === */
+/* === 좌우 5:5 레이아웃(기존 기능은 그대로) === */
 .page-split { display:flex; gap:24px; align-items:flex-start; }
 .page-left, .page-right { flex:1 1 0; }
 
@@ -59,8 +59,7 @@ tr:nth-child(even){background:#fafafa}
 .chat-card {
   background:#fff; border-radius:12px; box-shadow:0 4px 14px rgba(0,0,0,.06);
   padding:14px; width:100%;
-  /* 화면 전체를 채우지 않도록 적당한 높이(그림처럼) */
-  height: 70vh;              /* 필요하면 수치만 조절하면 됨 */
+  height: 70vh;
   display:flex; flex-direction:column;
 }
 .chat-title { font-weight:700; font-size:16px; margin-bottom:8px; color:#2c3e50; }
@@ -88,74 +87,100 @@ tr:nth-child(even){background:#fafafa}
   .page-split { flex-direction:column; }
   .chat-card { height: 56vh; }
 }
-
   </style>
 </head>
 <body>
   <div class="page-split">
-      <div class="page-left">
-  <div class="container">
-    <h1>이벤트 데이터 조회</h1>
+    <div class="page-left">
+      <div class="container">
+        <h1>이벤트 데이터 조회</h1>
 
-    <div class="tabs">
-      <div class="tab active" data-tab="uid">고유번호 검색</div>
-      <div class="tab" data-tab="serial">시리얼 검색</div>
-    </div>
-
-    <!-- 고유번호 검색 탭 -->
-    <div id="panel-uid" class="tabpanel active">
-      <div class="row">
-        <input id="uidInput" placeholder="고유번호(unique_id)" />
-        <div style="display:flex; gap:8px; align-items:center;">
-          <button class="btn" onclick="searchByUID()">검색</button>
-          <span class="tag" id="pageInfo">page 1</span>
-          <button class="btn" onclick="prevPage()">◀</button>
-          <button class="btn" onclick="nextPage()">▶</button>
-          <select id="limitSel" onchange="changeLimit()">
-            <option value="50">50</option>
-            <option value="100">100</option>
-            <option value="200">200</option>
-            <option value="500" selected>500</option>
-          </select>
+        <div class="tabs">
+          <div class="tab active" data-tab="uid">고유번호 검색</div>
+          <div class="tab" data-tab="serial">시리얼 검색</div>
+          <!-- 추가: 관리(수정) -->
+          <div class="tab" data-tab="edit">관리(수정)</div>
         </div>
-      </div>
-      <div class="meta">
-        <div id="loader" style="display:none">검색 중… <span id="timer">0.0</span>초</div>
-      </div>
-      <div id="uidResults"></div>
-    </div>
 
-    <!-- 시리얼 검색 탭 -->
-    <div id="panel-serial" class="tabpanel">
-      <div class="row" style="grid-template-columns:1fr 1fr 1fr auto;">
-        <input id="serialInput" placeholder="시리얼번호 정확히 입력" />
-        <input id="serialDateFrom" placeholder="시작일자 YYYY.MM.DD (선택)" />
-        <input id="serialDateTo" placeholder="종료일자 YYYY.MM.DD (선택)" />
-        <button class="btn" onclick="searchBySerial()">검색</button>
-      </div>
-      <div id="serialInfo" class="tag" style="display:none;"></div>
-      <div id="serialResults"></div>
-    </div>
-  </div>
+        <!-- 고유번호 검색 탭 -->
+        <div id="panel-uid" class="tabpanel active">
+          <div class="row">
+            <input id="uidInput" placeholder="고유번호(unique_id)" />
+            <div style="display:flex; gap:8px; align-items:center;">
+              <button class="btn" onclick="searchByUID()">검색</button>
+              <span class="tag" id="pageInfo">page 1</span>
+              <button class="btn" onclick="prevPage()">◀</button>
+              <button class="btn" onclick="nextPage()">▶</button>
+              <select id="limitSel" onchange="changeLimit()">
+                <option value="50">50</option>
+                <option value="100">100</option>
+                <option value="200">200</option>
+                <option value="500" selected>500</option>
+              </select>
+            </div>
+          </div>
+          <div class="meta">
+            <div id="loader" style="display:none">검색 중… <span id="timer">0.0</span>초</div>
+          </div>
+          <div id="uidResults"></div>
+        </div>
+
+        <!-- 시리얼 검색 탭 -->
+        <div id="panel-serial" class="tabpanel">
+          <div class="row" style="grid-template-columns:1fr 1fr 1fr auto;">
+            <input id="serialInput" placeholder="시리얼번호 정확히 입력" />
+            <input id="serialDateFrom" placeholder="시작일자 YYYY.MM.DD (선택)" />
+            <input id="serialDateTo" placeholder="종료일자 YYYY.MM.DD (선택)" />
+            <button class="btn" onclick="searchBySerial()">검색</button>
+          </div>
+          <div id="serialInfo" class="tag" style="display:none;"></div>
+          <div id="serialResults"></div>
+        </div>
+
+        <!-- 관리(수정) 탭 -->
+        <div id="panel-edit" class="tabpanel">
+          <div class="row" style="grid-template-columns:1fr auto auto 1fr auto;">
+            <input id="editUid" placeholder="고유번호 (예: AA0001)" />
+            <input id="editFrom" placeholder="시작일자 YYYY.MM.DD (선택)" />
+            <input id="editTo" placeholder="종료일자 YYYY.MM.DD (선택)" />
+            <input id="editToken" placeholder="관리자 토큰" />
+            <button class="btn" onclick="loadEditable()">불러오기</button>
           </div>
 
-     <div class="page-right">
-    <div class="chat-card">
-      <div class="chat-title">채팅</div>
-      <div id="chatBox" class="chat-box"></div>
-      <div class="chat-row">
-        <input id="chatInput" type="text" placeholder="메시지를 입력하고 Enter를 누르세요…" />
-        <button id="chatSend">입력</button>
+          <div class="meta">
+            <span class="tag" id="editMeta" style="display:none;"></span>
+            <div style="display:flex; gap:8px;">
+              <button class="btn" onclick="addRow()">행 추가</button>
+              <button class="btn" onclick="deleteSelected()">선택 삭제</button>
+              <button class="btn" onclick="saveEdits()">반영</button>
+            </div>
+          </div>
+
+          <div class="table-wrap" id="editTableWrap" style="margin-top:10px;"></div>
+          <div id="editMsg" class="meta" style="color:#666;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="page-right">
+      <div class="chat-card">
+        <div class="chat-title">채팅</div>
+        <div id="chatBox" class="chat-box"></div>
+        <div class="chat-row">
+          <input id="chatInput" type="text" placeholder="메시지를 입력하고 Enter를 누르세요…" />
+          <button id="chatSend">입력</button>
+        </div>
       </div>
     </div>
   </div>
-    </div>
 
   <script>
 /* ===== 설정 ===== */
 const baseUrl   = 'https://my-search-backend.onrender.com'; // ← 백엔드 주소
 const apiSearch = `${baseUrl}/search`;         // unique_id 검색 (배열 반환)
 const apiSerial = `${baseUrl}/search-serial`;  // 시리얼 검색
+const apiList   = `${baseUrl}/admin/records`;  // 편집용 목록
+const apiBulk   = `${baseUrl}/admin/records/bulk`; // 벌크 저장
 
 /* ===== 상태/유틸 ===== */
 let timerInterval;
@@ -178,13 +203,12 @@ function getDateRange(startStr, endStr) {
 // "YYYY.MM.DD" → "M/D"
 function toMD(dateStr) { const parts = dateStr.split('.').map(Number); return `${parts[1]}/${parts[2]}`; }
 
-// 강화된 시간 파서: 오전/오후/AM/PM/HH:MM[:SS]/공백/한글 구분자 허용
+// 강화된 시간 파서
 function timeToMinutes(t) {
   if (!t) return null;
   const s = String(t).trim();
   const ampmMatch = s.match(/오전|오후|AM|PM/i);
-  const ampm = ampmMatch ? ampmMatch[0].toLowerCase() : null;
-  // "HH:MM[:SS]" 또는 "HH시MM분" 등
+  const ampm = ampmMatch ? s.toLowerCase() : null;
   const cleaned = s.replace(/\s+/g,'');
   const m = cleaned.match(/(\d{1,2})[:시](\d{1,2})/);
   if (!m) return null;
@@ -226,7 +250,7 @@ async function fetchRows(uid, page, limit) {
 async function searchByUID(page=null){
   const idRaw = qs('uidInput').value.trim();
   if(!idRaw){ alert('고유번호를 입력하세요.'); return; }
-  const uid = idRaw.toUpperCase(); // 대문자 통일 검색
+  const uid = idRaw.toUpperCase();
 
   state.page = page ?? state.page;
   qs('limitSel').value = String(state.limit);
@@ -234,10 +258,9 @@ async function searchByUID(page=null){
 
   try{
     startTimer();
-    // 상세 표(현재 페이지) + 요약(전체 1페이지 500행)
     const [pageRows, allRows] = await Promise.all([
       fetchRows(uid, state.page, state.limit),
-      fetchRows(uid, 1, 500) // UID당 최대 400이라 가정
+      fetchRows(uid, 1, 500)
     ]);
     stopTimer();
     state.lastData = pageRows;
@@ -262,37 +285,31 @@ function renderUIDTable(pageRows, allRows){
     return;
   }
 
-  // 1) 날짜 범위
   const df = '2025.09.19';
   const dt = '2025.09.25';
   const days = getDateRange(df, dt);
   const day25 = '2025.09.25';
 
-  // 2) 날짜별 카운트 + 9/25 분리 (요약은 전체 rows 기준)
   const counts = Object.fromEntries(days.map(d => [d, 0]));
-  let count25_first = 0; // 00:00~09:59
-  let countLive     = 0; // 12:00~23:59
+  let count25_first = 0;
+  let countLive     = 0;
 
   rowsForSummary.forEach(r => {
     const d = String(r['날짜'] ?? '').trim();
     const t = String(r['시간'] ?? '').trim();
     if (!d || !counts.hasOwnProperty(d)) return;
-
     if (d === day25) {
       const mins = timeToMinutes(t);
       if (mins !== null) {
-        if (mins <= 9*60 + 59)      count25_first += 1;   // 1차
-        else if (mins >= 12*60)     countLive     += 1;   // 생방
-        // 10:00~11:59는 요약 미집계(상세에는 그대로 표기)
+        if (mins <= 9*60 + 59)      count25_first += 1;
+        else if (mins >= 12*60)     countLive     += 1;
       }
     } else {
       counts[d] += 1;
     }
   });
 
-  // 3) 요약(원본) 표
-  const headerLabels = [];
-  const headerKeys   = [];
+  const headerLabels = [], headerKeys = [];
   days.forEach(d => {
     if (d === day25) {
       headerLabels.push('9/25(1차)'); headerKeys.push(d + '_first');
@@ -321,7 +338,7 @@ function renderUIDTable(pageRows, allRows){
   summary += `<tr><td>개근(원본)</td><td colspan="${headerLabels.length}" class="center strong">${perfectOriginal ? 'o' : 'x'}</td></tr>`;
   summary += '</tbody></table>';
 
-  // 4) 수정 가능한 패널
+  // 메시지 패널(기존 동작 유지)
   const editableHTML = renderEditPanel({
     days, day25,
     baseCounts: counts,
@@ -329,7 +346,6 @@ function renderUIDTable(pageRows, allRows){
     baseLive: countLive
   });
 
-  // 5) 상세 표(현재 페이지 rows)
   let detail = '<table style="margin-top:12px"><thead><tr>' +
     '<th>고유번호</th><th>날짜</th><th>시간</th><th>인증샷 시리얼넘버</th>' +
     '</tr></thead><tbody>';
@@ -347,10 +363,8 @@ function renderUIDTable(pageRows, allRows){
   wrap.innerHTML = wrapTable(summary) + wrapTable(editableHTML) + wrapTable(detail);
 }
 
-/* ===== 수정 가능한 집계 패널 + 메시지 ===== */
-/* ===== 수정 가능한 집계 패널 + 메시지 ===== */
+/* ===== 메시지 패널(기존) ===== */
 function renderEditPanel({ days, day25, baseCounts, base25First, baseLive }) {
-  // 날짜별 값 계산 그대로 사용 (입력칸 대신 기본값만 사용)
   const v = {
     '2025.09.19': baseCounts['2025.09.19'] || 0,
     '2025.09.20': baseCounts['2025.09.20'] || 0,
@@ -362,7 +376,6 @@ function renderEditPanel({ days, day25, baseCounts, base25First, baseLive }) {
     'live': baseLive || 0
   };
 
-  // 합계/개근/가중치 계산
   const k = v['2025.09.19'] + v['2025.09.20'] + v['2025.09.21'] +
             v['2025.09.22'] + v['2025.09.23'] + v['2025.09.24'] + v['25_first'];
   const n = v['live'];
@@ -371,7 +384,6 @@ function renderEditPanel({ days, day25, baseCounts, base25First, baseLive }) {
                    .every(x => x >= 1) && v['25_first'] >= 1;
   const weight = perfect ? (n * 8) : n;
 
-  // 요약 데이터 저장 → generateMessage()가 참조함
   state.lastSummary = v;
 
   let html = `
@@ -387,36 +399,24 @@ function renderEditPanel({ days, day25, baseCounts, base25First, baseLive }) {
     </div>
     <textarea id="messageBox" rows="10" style="width:100%; margin-top:8px; font-family:inherit;"></textarea>
   </div>`;
-
   return html;
 }
 
-
 function getEditedCounts() {
   return state.lastSummary || {
-    '2025.09.19': 0,
-    '2025.09.20': 0,
-    '2025.09.21': 0,
-    '2025.09.22': 0,
-    '2025.09.23': 0,
-    '2025.09.24': 0,
-    '25_first': 0,
-    'live': 0
+    '2025.09.19': 0,'2025.09.20': 0,'2025.09.21': 0,
+    '2025.09.22': 0,'2025.09.23': 0,'2025.09.24': 0,
+    '25_first': 0,'live': 0
   };
-
 }
-
 function updateEditedSummary() {
   const v = getEditedCounts();
-  const k = v['2025.09.19'] + v['2025.09.20'] + v['2025.09.21'] +
-            v['2025.09.22'] + v['2025.09.23'] + v['2025.09.24'] +
-            v['25_first']; // 사전 누적
-  const n = v['live'];     // 생방
+  const k = v['2025.09.19']+v['2025.09.20']+v['2025.09.21']+v['2025.09.22']+v['2025.09.23']+v['2025.09.24']+v['25_first'];
+  const n = v['live'];
   const perfect = [v['2025.09.19'],v['2025.09.20'],v['2025.09.21'],v['2025.09.22'],v['2025.09.23'],v['2025.09.24']].every(x=>x>=1) && v['25_first']>=1;
   const weight = perfect ? (n*8) : n;
   qs('editedInfo').textContent = `사전 합계: ${k}건 · 생방: ${n}건 · 개근: ${perfect ? 'o' : 'x'} · 가중치: ${weight}`;
 }
-
 function generateMessage() {
   const uid = (qs('uidInput').value || '').trim().toUpperCase();
   const v = getEditedCounts();
@@ -457,10 +457,8 @@ function generateMessage() {
 반드시 문의 전 문의 채널 하단의 양식을 참고해서 문의해주세요🙏
 문의 채널 링크 📍 
 http://pf.kakao.com/_cFxexcn `;
-
   qs('messageBox').value = msg.replaceAll('고유번호', uid || '고유번호');
 }
-
 function copyMessage(){
   const ta = qs('messageBox');
   ta.select(); ta.setSelectionRange(0, 99999);
@@ -469,10 +467,9 @@ function copyMessage(){
   qs('editedInfo').textContent = '메시지를 클립보드에 복사했습니다.';
   setTimeout(()=> qs('editedInfo').textContent = prev, 1500);
 }
-
 function generateAndCopy() {
   generateMessage();
-  setTimeout(copyMessage, 100); // 메시지 생성 후 0.1초 뒤 복사 실행
+  setTimeout(copyMessage, 100);
 }
 
 /* ===== 시리얼 검색 ===== */
@@ -498,7 +495,6 @@ async function searchBySerial(){
     qs('serialResults').innerHTML = `<p class="error">오류: ${escapeHtml(e.message)}</p>`;
   }
 }
-
 function renderSerial(rows){
   const div = qs('serialResults');
   if(!rows || rows.length===0){ div.innerHTML='<p>해당 시리얼번호로 조회된 결과가 없습니다.</p>'; return; }
@@ -529,6 +525,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
   </script>
 
+  <!-- 채팅 데모(그대로 유지) -->
   <script>
 (() => {
   const box  = document.getElementById('chatBox');
@@ -543,23 +540,19 @@ document.addEventListener('DOMContentLoaded', () => {
     box.appendChild(d);
     box.scrollTop = box.scrollHeight;
   }
-
   function send(){
     const t = (input.value || '').trim();
     if(!t) return;
     addMsg(t, true);
     input.value = '';
-    // 봇 응답이 필요 없으면 아래 한 줄 지워도 됨
-    // addMsg('응답: ' + t, false);
   }
-
   input.addEventListener('keydown', (e)=>{ if(e.key==='Enter') send(); });
   btn.addEventListener('click', send);
 })();
-</script>
+  </script>
 
+  <!-- 붙여넣기 OCR 도구(그대로 유지) -->
   <script>
-/** 0) 채팅 버블 유틸(전역) */
 function chatAdd(text, who='bot') {
   const box = document.getElementById('chatBox');
   if (!box) return;
@@ -583,8 +576,6 @@ function chatAddImage(url){
   box.appendChild(d);
   box.scrollTop = box.scrollHeight;
 }
-
-/** 1) webp/jpg 등을 png로 변환(ocr.space가 더 잘 먹음) */
 async function toPngBlob(file) {
   if (file.type === 'image/png') return file;
   const bmp = await createImageBitmap(file);
@@ -594,18 +585,15 @@ async function toPngBlob(file) {
   ctx.drawImage(bmp, 0, 0);
   return await new Promise(res => canvas.toBlob(b => res(b), 'image/png', 0.95));
 }
-
-/** 2) OCR.space 호출 */
-const OCRSPACE_KEY = 'K81476248188957'; // ← 본인 키로 교체
-
+const OCRSPACE_KEY = 'K81476248188957'; // 교체 필요
 async function ocrWithOCRSpace(origFile) {
   const pngBlob = await toPngBlob(origFile);
   const form = new FormData();
   form.append('apikey', OCRSPACE_KEY);
-  form.append('language', 'eng');           // 숫자/콜론/슬래시 위주면 eng 권장
+  form.append('language', 'eng');
   form.append('scale', 'true');
   form.append('detectOrientation', 'true');
-  form.append('OCREngine','2');          // 필요시 고정 엔진; 문제되면 주석 처리
+  form.append('OCREngine','2');
   form.append('file', pngBlob, 'paste.png');
 
   const res = await fetch('https://api.ocr.space/parse/image', { method:'POST', body:form });
@@ -620,35 +608,227 @@ async function ocrWithOCRSpace(origFile) {
   if (!text) throw new Error('빈 결과');
   return text;
 }
-
-/** 3) 붙여넣기 이벤트: 이미지 → 미리보기 → OCR → 원문 출력 */
 window.addEventListener('paste', async (e) => {
   const item = [...(e.clipboardData?.items || [])].find(i => i.kind === 'file' && i.type.startsWith('image/'));
   if (!item) return;
-
   const file = item.getAsFile();
   const url = URL.createObjectURL(file);
-
-  // 미리보기(사용자 버블)
   chatAddImage(url);
-
-  // 진행 메시지
   chatAdd('이미지 접수됨. OCR 처리 중…', 'bot');
-
   try {
     const text = await ocrWithOCRSpace(file);
-    // 원문 일부/전체 출력 (너무 길면 앞 500자만)
     const shown = text.length > 500 ? text.slice(0, 500) + ' …' : text;
     chatAdd('RAW: ' + shown, 'bot');
   } catch (err) {
     chatAdd('OCR 에러: ' + (err?.message || String(err)), 'bot');
   } finally {
-    // 메모리 정리
     setTimeout(() => URL.revokeObjectURL(url), 3000);
   }
 });
-</script>
+  </script>
 
+  <!-- ===== 관리(수정) 탭 스크립트: 인라인 편집/벌크 저장 ===== -->
+  <script>
+const editState = {
+  rows: [],          // 서버에서 받은 원본 행들
+  inserts: [],       // 새로 추가된 임시 행들({_tmpId, unique_id, 날짜, 시간, 인증샷 시리얼넘버})
+  updates: {},       // 수정된 필드 맵: id -> {필드:값...}
+  deletes: new Set() // 삭제 대상 _id 들
+};
 
+function E(id){ return document.getElementById(id); }
+function h(x){ return String(x ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
+function val(id){ return (E(id).value || '').trim(); }
+
+// 목록 불러오기
+async function loadEditable(){
+  const uid   = val('editUid').toUpperCase();
+  const from  = val('editFrom');
+  const to    = val('editTo');
+  const token = val('editToken');
+  if(!token){ alert('관리자 토큰을 입력하세요'); return; }
+  if(!uid){ alert('고유번호를 입력하세요'); return; }
+
+  const u = new URL(apiList);
+  u.searchParams.set('token', token);
+  u.searchParams.set('unique_id', uid);
+  if(from) u.searchParams.set('from', from);
+  if(to)   u.searchParams.set('to', to);
+
+  E('editMsg').textContent = '불러오는 중…';
+  try{
+    const res = await fetch(u, {mode:'cors'});
+    const j = await res.json();
+    if(!j.ok) throw new Error(j.error || '불러오기 실패');
+    editState.rows   = j.rows || [];
+    editState.inserts= [];
+    editState.updates= {};
+    editState.deletes= new Set();
+
+    renderEditTable();
+    E('editMeta').style.display='inline-block';
+    E('editMeta').textContent = `${uid} · ${editState.rows.length}건 로드됨`;
+    E('editMsg').textContent = '';
+  }catch(e){
+    E('editMsg').textContent = `오류: ${e.message}`;
+  }
+}
+
+// 테이블 렌더
+function renderEditTable(){
+  const cols = [
+    { key: 'select', label: '', width: 30 },
+    { key: 'unique_id', label: '고유번호', width: 120 },
+    { key: '날짜', label: '날짜', width: 110 },
+    { key: '시간', label: '시간', width: 90 },
+    { key: '인증샷 시리얼넘버', label: '인증샷 시리얼넘버', width: 200 },
+  ];
+
+  let html = '<table><thead><tr>';
+  cols.forEach(c => {
+    html += `<th ${c.width?`style="min-width:${c.width}px"`:''}>${c.label}</th>`;
+  });
+  html += '</tr></thead><tbody>';
+
+  for(const r of editState.rows){
+    if(editState.deletes.has(r._id)) continue;
+    html += rowHtml(r, false);
+  }
+  for(const r of editState.inserts){
+    html += rowHtml(r, true);
+  }
+
+  html += '</tbody></table>';
+  E('editTableWrap').innerHTML = html;
+  bindCellHandlers();
+}
+
+function rowHtml(r, isNew){
+  const rowId = isNew ? r._tmpId : r._id;
+  const uid = r.unique_id ?? '';
+  const d   = r['날짜'] ?? '';
+  const t   = r['시간'] ?? '';
+  const srl = r['인증샷 시리얼넘버'] ?? '';
+  const trAttr = `data-rowid="${h(rowId)}" data-new="${isNew?'1':'0'}"`;
+  const cell = (key, value) => `<td contenteditable="true" data-key="${key}">${h(value)}</td>`;
+  return `<tr ${trAttr}>
+    <td style="text-align:center"><input type="checkbox" class="row-check"/></td>
+    ${cell('unique_id', uid)}
+    ${cell('날짜', d)}
+    ${cell('시간', t)}
+    ${cell('인증샷 시리얼넘버', srl)}
+  </tr>`;
+}
+
+function bindCellHandlers(){
+  const wrap = E('editTableWrap');
+  wrap.querySelectorAll('td[contenteditable="true"]').forEach(td=>{
+    td.addEventListener('input', ()=>{
+      const tr = td.closest('tr');
+      const key = td.dataset.key;
+      const rowId = tr.dataset.rowid;
+      const isNew = tr.dataset.new === '1';
+      const v = td.textContent.trim();
+
+      if(isNew){
+        const i = editState.inserts.findIndex(x=> x._tmpId===rowId);
+        if(i>=0) editState.inserts[i][key] = v;
+      }else{
+        const m = (editState.updates[rowId] ||= {});
+        m[key] = v;
+      }
+    });
+  });
+}
+
+// 행 추가/삭제
+function addRow(){
+  const uid = val('editUid').toUpperCase();
+  if(!uid){ alert('먼저 고유번호를 입력/불러오기 하세요'); return; }
+  const tmpId = 'new_' + Math.random().toString(36).slice(2, 9);
+  editState.inserts.push({
+    _tmpId: tmpId,
+    unique_id: uid,
+    '날짜': '',
+    '시간': '',
+    '인증샷 시리얼넘버': ''
+  });
+  renderEditTable();
+}
+function deleteSelected(){
+  const wrap = E('editTableWrap');
+  const checks = [...wrap.querySelectorAll('.row-check')];
+  let delCount = 0;
+
+  for(const chk of checks){
+    if(!chk.checked) continue;
+    const tr = chk.closest('tr');
+    const rowId = tr.dataset.rowid;
+    const isNew = tr.dataset.new === '1';
+    if(isNew){
+      editState.inserts = editState.inserts.filter(x=> x._tmpId !== rowId);
+    }else{
+      editState.deletes.add(rowId);
+      delete editState.updates[rowId];
+    }
+    delCount++;
+  }
+  if(delCount===0) { alert('삭제할 행을 선택하세요'); return; }
+  renderEditTable();
+}
+
+// 저장(반영)
+async function saveEdits(){
+  const token = val('editToken');
+  if(!token){ alert('관리자 토큰을 입력하세요'); return; }
+
+  const inserts = [];
+  for(const r of editState.inserts){
+    const uid = (r.unique_id||'').trim().toUpperCase();
+    const d   = (r['날짜']||'').trim();
+    const t   = (r['시간']||'').trim();
+    const srl = (r['인증샷 시리얼넘버']||'').trim();
+    if(!uid || !d || !t || !srl){
+      E('editMsg').textContent = '추가 행에 비어있는 값이 있습니다.';
+      return;
+    }
+    inserts.push({ unique_id: uid, '날짜': d, '시간': t, '인증샷 시리얼넘버': srl });
+  }
+
+  const updates = Object.entries(editState.updates).map(([id, fields])=>{
+    const out = { _id: id };
+    if('unique_id' in fields) out.unique_id = (fields.unique_id||'').trim().toUpperCase();
+    if('날짜' in fields) out['날짜'] = (fields['날짜']||'').trim();
+    if('시간' in fields) out['시간'] = (fields['시간']||'').trim();
+    if('인증샷 시리얼넘버' in fields) out['인증샷 시리얼넘버'] = (fields['인증샷 시리얼넘버']||'').trim();
+    return out;
+  });
+
+  const deletes = Array.from(editState.deletes);
+
+  const payload = { insert: inserts, update: updates, delete: deletes };
+
+  E('editMsg').textContent = '반영 중…';
+  try{
+    const u = new URL(apiBulk);
+    u.searchParams.set('token', token);
+    const res = await fetch(u, {
+      method:'POST',
+      mode:'cors',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const j = await res.json();
+    if(!res.ok || !j.ok){
+      throw new Error(j.error || `저장 실패 (HTTP ${res.status})`);
+    }
+    E('editMsg').textContent = `성공: matched ${j.matched}, modified ${j.modified}, upserts ${j.upserts}, deleted ${j.deleted}`;
+    await loadEditable();
+  }catch(e){
+    // 백엔드가 BulkWriteError 메시지를 error에 넣어주면 그대로 표시됨
+    E('editMsg').textContent = `오류: ${e.message}`;
+  }
+}
+  </script>
 </body>
 </html>
