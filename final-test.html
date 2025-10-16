@@ -17,10 +17,9 @@
   button{background:var(--pri);color:#fff;border:0;border-radius:8px;padding:9px 12px;cursor:pointer}
   button.ghost{background:#eef2ff;color:#1f34a2}
   button.light{background:#e5e7eb;color:#333}
-  button.green{background:#16a34a}
   .tag{background:#eef6ff;border:1px solid #cfe3ff;color:#1f6feb;border-radius:999px;padding:3px 8px;font-size:12px}
   .table-wrap{overflow:auto;border:1px solid var(--b);border-radius:8px}
-  table{width:100%;border-collapse:collapse;min-width:720px}
+  table{width:100%;border-collapse:collapse;min-width:680px}
   th,td{border-bottom:1px solid #f0f2f5;padding:8px;white-space:nowrap}
   th{background:#f6f8fa;text-align:left;font-weight:600;color:#334155}
   tr:nth-child(even) td{background:#fafafa}
@@ -28,17 +27,24 @@
   .chk{text-align:center;width:36px}
   .right{display:flex;flex-direction:column;gap:12px}
   .ocr-box{display:flex;gap:12px}
-  .ocr-left{flex:0 0 260px;border:1px dashed var(--b);border-radius:12px;display:flex;align-items:center;justify-content:center;min-height:360px;overflow:hidden;background:#fbfbfd}
+  .ocr-left{flex:0 0 160px;border:1px dashed var(--b);border-radius:12px;display:flex;align-items:center;justify-content:center;min-height:360px;overflow:hidden;background:#fbfbfd}
   .ocr-left img{max-width:100%;max-height:100%}
   .ocr-right{flex:1;display:flex;flex-direction:column;gap:8px}
-  textarea{width:100%;min-height:180px;resize:vertical}
+  textarea{width:100%;min-height:200px;resize:vertical}
   .small{font-size:12px;color:#64748b}
   .ok{color:#0a7a28}
   .err{color:#b91c1c}
   .pill{padding:3px 8px;border-radius:999px;background:#f1f5f9}
   .grid2{display:grid;grid-template-columns:1fr auto auto auto;gap:8px}
   .flex-gap{display:flex;gap:6px;align-items:center}
-  .manual{display:grid;grid-template-columns:1fr 1fr 2fr auto;gap:8px}
+  .manual{ display:grid; grid-template-columns:1fr 1fr 2fr; gap:8px }
+
+  /* ▶ 날짜별 카운팅 미니표 */
+  .mini-wrap{margin:8px 0 12px}
+  .mini{width:100%;border-collapse:collapse;min-width:680px}
+  .mini th,.mini td{border:1px solid #eef1f4;padding:8px;text-align:center}
+  .mini th{background:#f6f8fa;font-weight:700}
+  .mini caption{caption-side:top;text-align:left;font-weight:600;margin-bottom:6px;color:#334155}
 </style>
 </head>
 <body>
@@ -59,9 +65,18 @@
       <div class="flex-gap">
         <button class="ghost" id="btnAddRow">행 추가</button>
         <button class="light" id="btnDeleteSel">선택 삭제</button>
-        <button id="btnApply">DB 반영</button>
+        <button id="btnApply">DB 반영&메시지 생성&복사</button>
       </div>
-      <span class="small">※ 표에서 값 직접 수정 가능(UID/날짜/시간/시리얼). ‘DB 반영’은 저장용일 뿐, 메시지 생성과 무관합니다.</span>
+      <span class="small">※ 표에서 값 직접 수정 가능(UID/날짜/시간/시리얼). ‘DB 반영’ 눌러야 저장됩니다.</span>
+    </div>
+
+    <!-- ▶ 날짜별 카운팅 표 (추가) -->
+    <div id="dailyCount" class="mini-wrap" style="display:none">
+      <div class="table-wrap">
+        <table class="mini" id="miniTable">
+          <!-- JS 렌더 -->
+        </table>
+      </div>
     </div>
 
     <div class="table-wrap">
@@ -81,13 +96,12 @@
       </table>
     </div>
 
-    <!-- 메시지 영역 (DB 반영과 완전 분리) -->
-    <div class="row" style="margin-top:12px">
-      <button class="green" id="btnMakeMsg">최종 안내 메시지 생성</button>
-      <button class="ghost" id="btnCopyMsg">복사</button>
-      <span class="small" id="msgInfo">표에 있는 값 기준으로 즉시 생성합니다. (DB 반영 불필요)</span>
+    <div class="row" style="margin-top:10px">
+      <button class="light" id="btnMakeAndCopy" style="display:none">메시지 생성&복사</button>
+      <span class="small" id="msgInfo"></span>
     </div>
-    <textarea id="messageBox" placeholder="‘최종 안내 메시지 생성’을 누르면 자동으로 채워집니다."></textarea>
+
+    <textarea id="messageBox" placeholder="‘메시지 생성’ 누르면 자동으로 채워집니다."></textarea>
   </div>
 
   <!-- RIGHT: OCR -->
@@ -104,10 +118,6 @@
           <button id="btnPushToTable">왼쪽 표로 추가</button>
         </div>
 
-        <!-- OCR 원문/파싱 로그 -->
-        <textarea id="ocrLog" placeholder="OCR 원문과 파싱 로그가 여기에 표시됩니다."></textarea>
-
-        <!-- 파싱된 값 뱃지 -->
         <div class="row" style="margin:0">
           <div class="flex-gap">
             <span class="small">파싱값</span>
@@ -118,14 +128,14 @@
           <span class="small" id="ocrInfo"></span>
         </div>
 
-        <!-- 수동 입력 라인 -->
         <div class="manual">
           <input id="m_date"  placeholder="YYYY.MM.DD (없으면 직접 입력)"/>
           <input id="m_time"  placeholder="HH:MM (예: 0:1 → 00:01 자동보정)"/>
           <input id="m_serial" placeholder="M-... (시리얼)"/>
-          <button class="light" id="btnUseParsed">파싱값 채우기</button>
         </div>
         <span class="small">※ 파싱이 틀리거나 비었다면 위 칸을 직접 채우고 ‘왼쪽 표로 추가’를 누르세요.</span>
+
+        <textarea id="ocrLog" placeholder="OCR 원문과 파싱 로그가 여기에 표시됩니다."></textarea>
       </div>
     </div>
   </div>
@@ -147,17 +157,56 @@ let VISION_LANG = ['ko','en'];
 const $ = (id)=>document.getElementById(id);
 const state = {
   rows: [], baseById: {}, uid: '',
-  ocr: {text:'', date:'', time:'', serial:'', imgUrl:null}
+  ocr: {text:'', date:null, time:null, serial:null, imgUrl:null}
 };
 
 /* ========= 도우미 ========= */
 function esc(s){ return String(s==null?'':s); }
 function pad2(n){ return String(n).padStart(2,'0'); }
 function isYmd(s){ return /^\d{4}\.(0[1-9]|1[0-2])\.(0[1-9]|[12]\d|3[01])$/.test(s||''); }
+function isHm(s){ return /^([01]\d|2[0-3]):[0-5]\d$/.test(s||''); }
 function renderCountTag(){
   if(!state.rows.length){ $('countTag').style.display='none'; return; }
   $('countTag').style.display='inline-block';
   $('countTag').textContent = `${state.uid} · ${state.rows.length}건`;
+}
+function clearMessageBox(){
+  $('messageBox').value = '';
+  $('msgInfo').textContent = '';
+}
+
+/* ========= 날짜별 카운팅 렌더 (추가) ========= */
+function hmToMin(s){ const m=(s||'').match(/^(\d{1,2}):(\d{2})$/); if(!m) return null; const h=+m[1], mm=+m[2]; if(h>23||mm>59) return null; return h*60+mm; }
+function computeDaily(){
+  const want = new Set(['2025.09.19','2025.09.20','2025.09.21','2025.09.22','2025.09.23','2025.09.24','2025.09.25']);
+  const rows = state.rows.filter(r=>want.has((r['날짜']||'').trim()));
+  const cnt={'2025.09.19':0,'2025.09.20':0,'2025.09.21':0,'2025.09.22':0,'2025.09.23':0,'2025.09.24':0, first25:0, live:0};
+  for(const r of rows){
+    const d=(r['날짜']||'').trim(); const t=(r['시간']||'').trim();
+    if(d==='2025.09.25'){
+      const m=hmToMin(t);
+      if(m!=null){ if(m<=599) cnt.first25++; else if(m>=720) cnt.live++; }
+    }else if(cnt.hasOwnProperty(d)){ cnt[d]++; }
+  }
+  return cnt;
+}
+function renderDailyCount(){
+  const wrap = $('dailyCount');
+  if(!state.rows.length){ wrap.style.display='none'; $('miniTable').innerHTML=''; return; }
+  const C = computeDaily();
+  const header = ['9/19','9/20','9/21','9/22','9/23','9/24','9/25(1차)','생방'];
+  const values = [
+    C['2025.09.19'],C['2025.09.20'],C['2025.09.21'],
+    C['2025.09.22'],C['2025.09.23'],C['2025.09.24'],
+    C.first25, C.live
+  ];
+  const ths = header.map(h=>`<th>${h}</th>`).join('');
+  const tds = values.map(v=>`<td>${v}</td>`).join('');
+  $('miniTable').innerHTML =
+    `<caption>날짜별 카운팅(건)</caption>
+     <thead><tr>${ths}</tr></thead>
+     <tbody><tr>${tds}</tr></tbody>`;
+  wrap.style.display='block';
 }
 
 /* ========= 테이블 렌더 ========= */
@@ -182,20 +231,28 @@ function renderTable(){
     }
 
     tr.appendChild(tdChk);
-    tr.appendChild(mkCell('unique_id','140px'));
+    tr.appendChild(mkCell('unique_id','100px'));
     tr.appendChild(mkCell('날짜','130px'));
-    tr.appendChild(mkCell('시간','100px'));
-    tr.appendChild(mkCell('인증샷 시리얼넘버','320px'));
+    tr.appendChild(mkCell('시간','84px'));
+    tr.appendChild(mkCell('인증샷 시리얼넘버'));
 
     tb.appendChild(tr);
   }
   renderCountTag();
+  renderDailyCount();   // ★ 추가
 }
 
 /* ========= 로드 ========= */
 async function loadUID(){
-  const raw = ($('uidInput').value||'').trim(); if(!raw){ alert('고유번호를 입력하세요.'); return; }
-  const uid = raw.toUpperCase(); state.uid = uid;
+  const raw = ($('uidInput').value||'').trim();
+  if(!raw){ alert('고유번호를 입력하세요.'); return; }
+
+  // 메시지 칸 초기화
+  clearMessageBox();
+
+  const uid = raw.toUpperCase();
+  state.uid = uid;
+
   $('loadInfo').textContent = '로딩 중…';
 
   const url = new URL(API_SEARCH);
@@ -206,9 +263,12 @@ async function loadUID(){
 
   state.rows = j.rows.map(r=>({ ...r }));
   state.baseById = {};
-  for(const r of j.rows){ if(r._id) state.baseById[r._id]=JSON.parse(JSON.stringify(r)); }
+  for (const r of j.rows){
+    if(r._id) state.baseById[r._id] = JSON.parse(JSON.stringify(r));
+  }
   renderTable();
   $('loadInfo').textContent = '완료';
+  dispatchUIDSearched(uid);
 }
 
 /* ========= 행 추가/삭제 ========= */
@@ -217,15 +277,23 @@ function addRow(prefill={}){
   state.rows.push(row);
   renderTable();
 }
+
+/* ★ 선택 삭제: 인덱스 내림차순으로 스플라이스 (버그픽스) */
 function deleteSelectedLocally(){
-  const ids = [];
+  const targets = [];
   document.querySelectorAll('.rowchk:checked').forEach(ck=>{
-    const tr = ck.closest('tr'); const id=tr?.dataset?.id||'';
+    const tr = ck.closest('tr');
+    const id = tr?.dataset?.id || '';
     const idx = Array.from($('tbody').children).indexOf(tr);
-    if(idx>=0){ state.rows.splice(idx,1); if(id) ids.push(id); }
+    if(idx>=0) targets.push({idx,id});
+  });
+  // 인덱스 큰 것부터 삭제 → 다음 인덱스가 안 흔들림
+  targets.sort((a,b)=>b.idx-a.idx).forEach(t=>{
+    state.rows.splice(t.idx,1);
   });
   renderTable();
-  if(ids.length) $('loadInfo').textContent = `삭제표시 ${ids.length}건 (DB 반영시 실제 삭제)`;
+  const delIds = targets.map(t=>t.id).filter(Boolean);
+  if(delIds.length) $('loadInfo').textContent = `삭제표시 ${delIds.length}건 (DB 반영시 실제 삭제)`;
 }
 
 /* ========= DB 반영 ========= */
@@ -240,7 +308,7 @@ async function applyChanges(){
     const d=(r['날짜']||'').trim();
     const t=(r['시간']||'').trim();
     const s=(r['인증샷 시리얼넘버']||'').trim();
-    if(!uid || !d || !t || !s) continue;
+    if(!uid || !d || !t || !s){ continue; }
 
     if(!r._id){ inserts.push({unique_id:uid,'날짜':d,'시간':t,'인증샷 시리얼넘버':s}); }
     else{
@@ -261,15 +329,24 @@ async function applyChanges(){
     body: JSON.stringify({ insert: inserts, update: updates, delete: deletes })
   });
   const j = await res.json();
-  if(!j.ok){ $('loadInfo').textContent='오류'; alert(j.error||'반영 실패'); return; }
+
+  if(!j.ok){
+    $('loadInfo').textContent='오류';
+    alert(j.error||'반영 실패');
+    return;
+  }
 
   $('loadInfo').textContent = `반영됨: upsert ${j.upserts}, update ${j.modified}, delete ${j.deleted}`;
-  // 재로드는 선택사항 (표 최신화용)
-  loadUID().catch(()=>{});
+
+  // 최신 데이터 재조회 후 메시지 생성 + 복사
+  await loadUID();
+  makeAndCopyMsg();
+
+  const info = $('msgInfo') || $('loadInfo');
+  if(info) info.textContent = 'DB 반영 및 메시지 생성·복사 완료';
 }
 
-/* ========= 메시지 생성 (DB 반영과 완전 분리) ========= */
-function hmToMin(s){ const m=(s||'').match(/^(\d{1,2}):(\d{2})$/); if(!m) return null; const h=+m[1], mm=+m[2]; if(h>23||mm>59) return null; return h*60+mm; }
+/* ========= 메시지 생성 ========= */
 function computeSummary(){
   const want = new Set(['2025.09.19','2025.09.20','2025.09.21','2025.09.22','2025.09.23','2025.09.24','2025.09.25']);
   const rows = state.rows.filter(r=>want.has((r['날짜']||'').trim()));
@@ -284,7 +361,7 @@ function computeSummary(){
   return {...cnt, first25, live, preTotal, perfect};
 }
 function makeMessage(){
-  const uid=(state.uid||'').trim() || '고유번호';
+  const uid=state.uid||'고유번호';
   const S=computeSummary(); const w=S.perfect?(S.live*8):S.live;
   const msg =
 `📢 ${uid} 님, 최종 집계 안내입니다.
@@ -317,9 +394,14 @@ ${uid} 님은 ${S.perfect ? '개근에 해당됩니다.' : '개근에 해당되�
 문의 채널 링크 📍
 http://pf.kakao.com/_cFxexcn`;
   $('messageBox').value = msg;
-  $('msgInfo').textContent = '생성 완료 (DB 반영과 무관)';
+  $('msgInfo').textContent = '생성 완료';
 }
 function copyMsg(){ const ta=$('messageBox'); ta.focus(); ta.select(); document.execCommand('copy'); $('msgInfo').textContent='복사됨'; setTimeout(()=>$('msgInfo').textContent='',1200); }
+function makeAndCopyMsg(){
+  makeMessage();
+  copyMsg();
+  $('msgInfo').textContent = '생성 후 복사 완료';
+}
 
 /* ========= OCR: Google Vision ========= */
 async function blobToBase64(blob){
@@ -339,7 +421,7 @@ async function visionOCRFromBlob(blob){
       || '';
 }
 
-/* 시간 후보 추출(콜론 앞/뒤 숫자 1~2자리 → HH:MM 보정) */
+/* 시간 후보 추출 */
 function extractTimesColon2(text){
   const out=new Set(); const s=String(text||'');
   for(let i=0;i<s.length;i++){
@@ -390,7 +472,6 @@ document.addEventListener('paste', async (e)=>{
     $('ocrLog').value = `【RAW】\n${raw}\n\n【PARSED】\n날짜: ${parsed.dates.join(', ')||'-'}\n시간: ${parsed.times.join(', ')||'-'}\n시리얼: ${parsed.serials.join(', ')||'-'}`;
     setParsedBadges(parsed);
 
-    // 기본값 + 수동 입력칸 채우기
     state.ocr.text = raw;
     state.ocr.date = parsed.dates[0] || '';
     state.ocr.time = parsed.times[0] || '';
@@ -406,14 +487,7 @@ document.addEventListener('paste', async (e)=>{
   }
 }, {capture:true});
 
-/* 파싱값 채우기 */
-$('btnUseParsed').onclick = ()=>{
-  $('m_date').value  = state.ocr.date || '';
-  $('m_time').value  = state.ocr.time || '';
-  $('m_serial').value= state.ocr.serial || '';
-};
-
-/* 시간 보정: "H:M" / "H:MM" / "HH:M" → "HH:MM" */
+/* 시간 보정 */
 function normalizeHm(s){
   const m = String(s||'').trim().match(/^(\d{1,2})\s*[:시]\s*(\d{1,2})$/);
   if(!m) return null;
@@ -451,8 +525,6 @@ $('btnLoad').onclick = loadUID;
 $('btnAddRow').onclick = ()=>addRow({unique_id:state.uid});
 $('btnDeleteSel').onclick = deleteSelectedLocally;
 $('btnApply').onclick = applyChanges;
-$('btnMakeMsg').onclick = makeMessage;   // ★ DB 반영과 무관, 항상 동작
-$('btnCopyMsg').onclick = copyMsg;
 $('btnPushToTable').onclick = pushOcrToTable;
 $('btnClearOcr').onclick = ()=>{
   state.ocr={text:'',date:'',time:'',serial:'',imgUrl:null};
@@ -464,6 +536,15 @@ $('btnPickLang').onclick = ()=>{
   VISION_LANG = (VISION_LANG[0]==='ko') ? ['en','ko'] : ['ko','en'];
   $('btnPickLang').textContent = VISION_LANG.join(' / ');
 };
+$('uidInput').addEventListener('keydown', (e)=>{
+  if (e.isComposing) return;
+  if (e.key === 'Enter') { e.preventDefault(); loadUID(); }
+});
+
+/* 브로드캐스트(연동 대비) */
+function dispatchUIDSearched(uid){
+  window.dispatchEvent(new CustomEvent('uidSearched',{detail:{uid}}));
+}
 
 /* 초기 포커스 */
 $('uidInput').focus();
